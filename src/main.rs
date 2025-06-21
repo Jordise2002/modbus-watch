@@ -3,14 +3,18 @@ use clap::Parser;
 use model::PolledConnection;
 
 mod model;
+mod data;
 
 #[derive(Parser, Debug)]
 struct Args {
-    config_file: std::path::PathBuf
+    config_file: std::path::PathBuf,
+    #[arg(default_value = "modbus-watch.db3")]
+    db_file: std::path::PathBuf,
 }
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = Args::parse();
-
+    /* 
     let config = std::fs::read_to_string(&args.config_file).unwrap_or_else(|e| {
         eprintln!("Couldn't read config file: {e}");
         std::process::exit(1);
@@ -22,12 +26,16 @@ fn main() {
     });
 
     for connection in &config {
-        if let Err(err) = connection.validate()
-        {
+        if let Err(err) = connection.validate() {
             eprintln!("Wrong config:\n{}", err);
             std::process::exit(1);
         }
     }
+    */
+    let db = data::init_db(args.db_file).await.unwrap_or_else(|e| {
+        eprintln!("Couldn't init db: {e}");
+        std::process::exit(1);
+    });
 
     
 }

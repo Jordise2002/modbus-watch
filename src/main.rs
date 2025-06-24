@@ -2,8 +2,9 @@ use clap::Parser;
 
 use model::PolledConnection;
 
-mod model;
 mod data;
+mod model;
+mod comm;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -14,7 +15,7 @@ struct Args {
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
-    /* 
+
     let config = std::fs::read_to_string(&args.config_file).unwrap_or_else(|e| {
         eprintln!("Couldn't read config file: {e}");
         std::process::exit(1);
@@ -31,11 +32,9 @@ async fn main() {
             std::process::exit(1);
         }
     }
-    */
+
     let db = data::init_db(args.db_file).await.unwrap_or_else(|e| {
         eprintln!("Couldn't init db: {e}");
         std::process::exit(1);
     });
-
-    
 }

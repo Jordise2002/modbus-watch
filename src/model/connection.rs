@@ -1,13 +1,27 @@
 use serde::{Serialize, Deserialize};
 use anyhow::{Result, anyhow};
-use std::time::Duration;
+use std::{net::IpAddr, str::FromStr, time::Duration};
 
 use crate::model::slave::PolledSlave;
+
+fn default_port() -> u16
+{
+    502
+}
+
+fn default_ip() -> IpAddr
+{
+    IpAddr::from_str("127.0.0.1").unwrap()
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PolledConnection {
     #[serde(default)]
     pub config: PolledConnectionConfig,
+    #[serde(default = "default_ip")]
+    pub ip: IpAddr,
+    #[serde(default = "default_port")]
+    pub port: u16,
     pub slaves: Vec<PolledSlave>,
 }
 

@@ -34,6 +34,21 @@ impl PolledValue {
             ));
         }
 
+        if (self.table == ModbusTable::Coils || self.table == ModbusTable::DiscreteInput)
+            && self.starting_bit != 0
+        {
+            return Err(anyhow!("Coils and DiscreteInput tables have a maximum register size of 0, starting bit {} was provided!", self.starting_bit));
+        }
+
+        if (self.table == ModbusTable::Coils || self.table == ModbusTable::DiscreteInput)
+            && self.bit_length != 1
+        {
+            return Err(anyhow!(
+                "Coils and DiscreteInput tables have a maximum bit length of 1, {} was provided",
+                self.bit_length
+            ));
+        }
+
         if self.bit_length < self.data_type.min_bit_size() {
             return Err(anyhow!(
                 "Minimum byte size for {:?} is {}",

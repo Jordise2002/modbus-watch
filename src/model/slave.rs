@@ -1,8 +1,7 @@
+use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
-use anyhow::{Result, anyhow};
 
 use crate::model::value::PolledValue;
-
 
 fn default_slave_id() -> u8 {
     1
@@ -14,14 +13,14 @@ pub struct PolledSlave {
     pub config: PolledSlaveConfig,
     #[serde(default = "default_slave_id")]
     pub id: u8,
-    pub addresses: Vec<PolledValue>,
+    pub values: Vec<PolledValue>,
 }
 
 impl PolledSlave {
     pub fn validate(&self) -> Result<()> {
         let mut error_string = String::new();
 
-        for address in &self.addresses {
+        for address in &self.values {
             if let Err(err) = address.validate() {
                 error_string += &format!("\t\t{}: {}\n", address.id, err);
             }
@@ -38,14 +37,14 @@ impl PolledSlave {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PolledSlaveConfig {
     pub max_register_ammount: u32,
-    pub allow_gaps_in_queries: bool,
+    pub max_gap_size_in_query: u32,
 }
 
 impl Default for PolledSlaveConfig {
     fn default() -> Self {
         PolledSlaveConfig {
             max_register_ammount: 255,
-            allow_gaps_in_queries: false,
+            max_gap_size_in_query: 0,
         }
     }
 }

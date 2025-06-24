@@ -47,7 +47,7 @@ pub enum Endianness {
 }
 
 //I have to repeat this enum in order to use the derivation of serde traits :(
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Eq, Hash)]
 pub enum ModbusTable {
     DiscreteInput,
     Coils,

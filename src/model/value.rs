@@ -22,10 +22,13 @@ pub struct PolledValue {
     pub table: ModbusTable,
 
     pub endianness: Endianness,
+
+    #[serde(with = "humantime_serde")]
+    pub poll_time: std::time::Duration,
 }
 
 impl PolledValue {
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate(&self, max_register_ammount: u32) -> Result<()> {
         if self.data_type != DataType::Boolean
             && (self.table == ModbusTable::Coils || self.table == ModbusTable::DiscreteInput)
         {
@@ -62,6 +65,29 @@ impl PolledValue {
                 "Bit length ({}) is too high, maximum length is {}",
                 self.bit_length,
                 MAX_VALUE_BIT_LENGTH
+            ));
+        }
+
+        let register_size =
+            if self.table == ModbusTable::Coils || self.table == ModbusTable::DiscreteInput {
+                1
+            } else {
+                16
+            };
+
+        let ending_bit = self.starting_bit as u16 + self.bit_length;
+
+        let register_ammount = if ending_bit % register_size == 0 {
+            ending_bit / register_size
+        } else {
+            ending_bit / register_size + 1
+        };
+
+        if register_ammount as u32 > max_register_ammount {
+            return Err(anyhow!(
+                "Max register ammount for query is {}, this query would contain {} registers",
+                max_register_ammount,
+                register_ammount
             ));
         }
 

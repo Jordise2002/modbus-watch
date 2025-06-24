@@ -21,7 +21,7 @@ impl PolledSlave {
         let mut error_string = String::new();
 
         for address in &self.values {
-            if let Err(err) = address.validate() {
+            if let Err(err) = address.validate(self.config.max_register_ammount) {
                 error_string += &format!("\t\t{}: {}\n", address.id, err);
             }
         }

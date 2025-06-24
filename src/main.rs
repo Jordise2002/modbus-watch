@@ -1,6 +1,7 @@
 use clap::Parser;
 
 use model::PolledConnection;
+use comm::ModbusWatcher;
 
 mod data;
 mod model;
@@ -12,6 +13,7 @@ struct Args {
     #[arg(default_value = "modbus-watch.db3")]
     db_file: std::path::PathBuf,
 }
+
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
@@ -37,4 +39,8 @@ async fn main() {
         eprintln!("Couldn't init db: {e}");
         std::process::exit(1);
     });
+
+    let mut modbus_watcher = ModbusWatcher::new(config, db);
+
+    modbus_watcher.watch().unwrap();
 }

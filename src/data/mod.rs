@@ -1,57 +1,61 @@
-use std::path::PathBuf;
+use crate::model::PolledConnection;
+use anyhow::{anyhow, Result};
 use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::SqliteConnectionManager;
-use anyhow::{Result, anyhow};
-use sql_builder::SqlBuilder;
+use rusqlite::params;
+use tokio::sync::mpsc::Receiver;
+use std::path::PathBuf;
 
-const VALUE_TABLE: &str = "CREATE TABLE IF NOT EXISTS modbus_values (
-                                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                address INTEGER NOT NULL,
-                                modbus_table TEXT NOT NULL,
-                                slave_id INTEGER NOT NULL,
-                                config TEXT
-                            );";
+mod tables;
 
-const POLL_TABLE: &str = "CREATE TABLE IF NOT EXISTS modbus_polls (
-                                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                value_id INTEGER NOT NULL REFERENCES modbus_values(id),
-                                timestamp DATETIME NOT NULL,
-                                value blob
-                            );";
-                            
-const AGGREGATES_TABLE: &str = "CREATE TABLE IF NOT EXISTS modbus_aggregates (
-                                    id INTEGER PRIMARY KEY,
-                                    value_id INTEGER NOT NULL REFERENCES modbus_values(id),
-                                    period TEXT NOT NULL,
-                                    start DATETIME NOT NULL,
-                                    finish DATETIME NOT NULL,
-                                    average blob,
-                                    median blob,
-                                    min blob,
-                                    max blob,
-                                    ammount INTEGER 
-                                );";
-
-pub async fn build_db(conn: PooledConnection<SqliteConnectionManager>) -> Result<()>
-{
-    conn.execute(VALUE_TABLE, [])?;
-
-    conn.execute(POLL_TABLE, [])?;
-
-    conn.execute(AGGREGATES_TABLE, [])?;
-
-    Ok(())
+pub struct InsertValueMessage {
+    name: String,
+    timestamp: std::time::Instant,
+    value: Vec<u8>
+}
+pub struct DbManager {
+    db: Pool<SqliteConnectionManager>,
+    insert_channel: Receiver<InsertValueMessage>
 }
 
-pub async fn init_db(path: PathBuf) -> Result<Pool<SqliteConnectionManager>> 
-{
-    let db = SqliteConnectionManager::file(path);
+impl DbManager {
+    pub fn new(path: PathBuf, config: &Vec<PolledConnection>, insert_channel: Receiver<InsertValueMessage>) -> Result<Self> {
+        let db = Self::build_db(path)?;
+        let db_manager = DbManager {db, insert_channel};
 
-    let db_pool = Pool::new(db)?;
+        db_manager.init_db(config)?;
 
-    let conn = db_pool.get()?;
+        Ok(db_manager)
+    }
 
-    build_db(conn).await?;
+    fn build_db(path: PathBuf) -> Result<Pool<SqliteConnectionManager>> {
+        let db = SqliteConnectionManager::file(path);
 
-    Ok(db_pool)
+        let db_pool = Pool::new(db)?;
+
+        let conn = db_pool.get()?;
+
+        conn.execute(tables::VALUE_TABLE, [])?;
+
+        conn.execute(tables::POLL_TABLE, [])?;
+
+        conn.execute(tables::AGGREGATES_TABLE, [])?;
+
+        Ok(db_pool)
+    }
+
+    fn init_db(&self, config: &Vec<PolledConnection>) -> Result<()> {
+        let conn = self.db.get()?;
+
+        for connection_config in config {
+            for slave_config in &connection_config.slaves {
+                for value_config in &slave_config.values {
+                    let query = tables::insert_modbus_value(value_config)?;
+                    conn.execute(&query, params![])?;
+                }
+            }
+        }
+
+        Ok(())
+    }
 }

@@ -2,6 +2,7 @@ use clap::Parser;
 
 use model::PolledConnection;
 use comm::ModbusWatcher;
+use tokio::sync::mpsc;
 
 mod data;
 mod model;
@@ -19,12 +20,12 @@ async fn main() {
     let args = Args::parse();
 
     let config = std::fs::read_to_string(&args.config_file).unwrap_or_else(|e| {
-        eprintln!("Couldn't read config file: {e}");
+        eprintln!("Couldn't read config file: {}", e);
         std::process::exit(1);
     });
 
     let config: Vec<PolledConnection> = serde_json::from_str(&config).unwrap_or_else(|e| {
-        eprintln!("Couldn't parse config file: {e}");
+        eprintln!("Couldn't parse config file: {}", e);
         std::process::exit(1);
     });
 
@@ -35,12 +36,14 @@ async fn main() {
         }
     }
 
-    let db = data::init_db(args.db_file).await.unwrap_or_else(|e| {
-        eprintln!("Couldn't init db: {e}");
+    let (tx, mut rx) = mpsc::channel::<data::InsertValueMessage>(1024);
+    
+    let db = data::DbManager::new(args.db_file, &config).unwrap_or_else(|e| {
+        eprintln!("Couldn't init db: {}", e);
         std::process::exit(1);
     });
 
-    let mut modbus_watcher = ModbusWatcher::new(config, db);
+    let mut modbus_watcher = ModbusWatcher::new(config);
 
     modbus_watcher.watch().unwrap();
 }

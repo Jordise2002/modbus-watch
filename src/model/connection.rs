@@ -1,16 +1,14 @@
-use serde::{Serialize, Deserialize};
-use anyhow::{Result, anyhow};
-use std::{net::IpAddr, str::FromStr, time::Duration};
+use anyhow::{anyhow, Result};
+use serde::{Deserialize, Serialize};
+use std::{collections::HashSet, net::IpAddr, str::FromStr, time::Duration};
 
 use crate::model::slave::PolledSlave;
 
-fn default_port() -> u16
-{
+fn default_port() -> u16 {
     502
 }
 
-fn default_ip() -> IpAddr
-{
+fn default_ip() -> IpAddr {
     IpAddr::from_str("127.0.0.1").unwrap()
 }
 
@@ -28,9 +26,25 @@ pub struct PolledConnection {
 impl PolledConnection {
     pub fn validate(&self) -> Result<()> {
         let mut error_string = String::new();
+
         for slave in &self.slaves {
             if let Err(err) = slave.validate() {
                 error_string += &format!("\t{}:\n{}\n", slave.id, err);
+            }
+        }
+
+        let mut name_set = HashSet::new();
+        let mut repeated_set = HashSet::new();
+
+        for slave in &self.slaves {
+            for value in &slave.values {
+                if !name_set.insert(value.id.clone()) && !repeated_set.contains(&value.id) {
+                    error_string += &format!(
+                        "Repeated value names: {} was defined more than once\n",
+                        value.id
+                    );
+                    repeated_set.insert(value.id.clone());
+                }
             }
         }
 

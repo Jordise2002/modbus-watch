@@ -1,9 +1,11 @@
-use std::collections::HashMap;
 use anyhow::Result;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
+use std::collections::HashMap;
 use std::net::SocketAddr;
-use tweakable_modbus::{ModbusAddress, ModbusTable, ModbusMasterConnection};
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use tweakable_modbus::{ModbusAddress, ModbusMasterConnection, ModbusTable};
 
 use crate::model::{PolledConnection, PolledValue};
 
@@ -41,17 +43,33 @@ impl ModbusCommContext {
         }
     }
 
+    pub fn query_loop(interval: std::time::Duration, queries: Vec<Query>, master_connection: Arc<Mutex<ModbusMasterConnection>>)
+    {
+
+    }
+
     pub fn watch(&mut self, db: Pool<SqliteConnectionManager>) -> Result<()> {
-        let mut queries_ordered_by_poll_time: HashMap<std::time::Duration, Vec<Query>> = HashMap::new();
+        let mut queries_ordered_by_poll_time: HashMap<std::time::Duration, Vec<Query>> =
+            HashMap::new();
 
         for query in &self.queries {
-            queries_ordered_by_poll_time.entry(query.poll_time).or_default().push(query.clone());
+            queries_ordered_by_poll_time
+                .entry(query.poll_time)
+                .or_default()
+                .push(query.clone());
         }
 
         let socket = SocketAddr::new(self.config.ip, self.config.port);
-        let mut master_connection = ModbusMasterConnection::new_tcp(socket);
+        let mut master_connection = Arc::new(Mutex::new(ModbusMasterConnection::new_tcp(socket)));
 
-
+        /* 
+        for (interval, queries) in queries_ordered_by_poll_time
+        {
+            let master_connection = master_connection.clone();
+            tokio::task::spawn(async move {
+                self.query_loop(interval, queries, master_connection);
+            }); 
+        }*/
         Ok(())
     }
 

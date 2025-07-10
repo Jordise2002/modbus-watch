@@ -37,10 +37,14 @@ async fn main() {
     }
 
     let (tx, mut rx) = mpsc::channel::<data::InsertValueMessage>(1024);
-    
-    let db = data::DbManager::new(args.db_file, &config).unwrap_or_else(|e| {
+
+    let mut db = data::DbManager::new(args.db_file, &config, rx).unwrap_or_else(|e| {
         eprintln!("Couldn't init db: {}", e);
         std::process::exit(1);
+    });
+
+    tokio::spawn(async move {
+        db.listen();
     });
 
     let mut modbus_watcher = ModbusWatcher::new(config);

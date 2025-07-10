@@ -1,12 +1,15 @@
 use anyhow::Result;
-use r2d2::Pool;
-use r2d2_sqlite::SqliteConnectionManager;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time;
+use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
-use tweakable_modbus::{ModbusAddress, ModbusMasterConnection, ModbusTable};
+use tweakable_modbus::{
+    ModbusAddress, ModbusDataType, ModbusMasterConnection, ModbusResult, ModbusTable,
+};
 
+use crate::data::InsertValueMessage;
 use crate::model::{PolledConnection, PolledValue};
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -21,12 +24,12 @@ pub struct Query {
 
 pub struct ValueBinding {
     starting_address: ModbusAddress,
-    needed_addresses: Vec<u16>,
+    needed_ammount: u16,
     config: PolledValue,
 }
 pub struct ModbusCommContext {
     queries: Vec<Query>,
-    value_bindings: Vec<ValueBinding>,
+    value_bindings: Arc<HashMap<ModbusAddress, Vec<ValueBinding>>>,
     config: PolledConnection,
 }
 
@@ -34,7 +37,7 @@ impl ModbusCommContext {
     pub fn new(config: PolledConnection) -> Self {
         let queries = Self::build_queries(&config);
 
-        let value_bindings = Self::build_value_bindings(&config);
+        let value_bindings = Arc::new(Self::build_value_bindings(&config));
 
         ModbusCommContext {
             config,
@@ -43,12 +46,128 @@ impl ModbusCommContext {
         }
     }
 
-    pub fn query_loop(interval: std::time::Duration, queries: Vec<Query>, master_connection: Arc<Mutex<ModbusMasterConnection>>)
-    {
-
+    fn format_value(registers: Vec<ModbusDataType>, config: &PolledValue) -> Vec<u8> {
+        
     }
 
-    pub fn watch(&mut self, db: Pool<SqliteConnectionManager>) -> Result<()> {
+    fn load_queries(modbus_conn: &mut ModbusMasterConnection, queries: &Vec<Query>) {
+        for query in queries {
+            match query.table {
+                ModbusTable::Coils => {
+                    modbus_conn
+                        .add_read_coils_query(query.slave_id, query.starting_address, query.ammount)
+                        .unwrap();
+                }
+                ModbusTable::DiscreteInput => {
+                    modbus_conn
+                        .add_read_discrete_inputs_query(
+                            query.slave_id,
+                            query.starting_address,
+                            query.ammount,
+                        )
+                        .unwrap();
+                }
+                ModbusTable::InputRegisters => {
+                    modbus_conn
+                        .add_read_input_registers_query(
+                            query.slave_id,
+                            query.starting_address,
+                            query.ammount,
+                        )
+                        .unwrap();
+                }
+                ModbusTable::HoldingRegisters => {
+                    modbus_conn
+                        .add_read_holding_registers_query(
+                            query.slave_id,
+                            query.starting_address,
+                            query.ammount,
+                        )
+                        .unwrap();
+                }
+            }
+        }
+    }
+
+    fn handle_results(
+        results: HashMap<ModbusAddress, ModbusResult>,
+        bindings: Arc<HashMap<ModbusAddress, Vec<ValueBinding>>>,
+        tx: Sender<InsertValueMessage>,
+    ) {
+        for address in results.keys() {
+            if !bindings.contains_key(address) {
+                continue;
+            }
+
+            let address_bindings = bindings.get(address).unwrap();
+
+            for address_binding in address_bindings {
+                let mut value_registers = vec![];
+                let mut address_pointer = address.clone();
+                let mut success = true;
+
+                for _i in 0..address_binding.needed_ammount {
+                    if !results.contains_key(&address_pointer) {
+                        success = false;
+                        break;
+                    }
+
+                    if let ModbusResult::ReadResult(value) = results.get(&address_pointer).unwrap()
+                    {
+                        value_registers.push(value.clone());
+                    } else {
+                        success = false;
+                        break;
+                    }
+
+                    address_pointer.address += 1;
+                }
+
+                if !success {
+                    continue;
+                }
+
+                let value = Self::format_value(value_registers, &address_binding.config);
+
+                let insert = InsertValueMessage {
+                    name: address_binding.config.id.clone(),
+                    timestamp: std::time::SystemTime::now(),
+                    value,
+                };
+
+                tx.send(insert);
+            }
+        }
+    }
+
+    pub async fn query_loop(
+        interval: std::time::Duration,
+        queries: Vec<Query>,
+        master_connection: Arc<Mutex<ModbusMasterConnection>>,
+        tx: Sender<InsertValueMessage>,
+        bindings: Arc<HashMap<ModbusAddress, Vec<ValueBinding>>>,
+    ) {
+        let mut interval = tokio::time::interval(interval);
+        loop {
+            interval.tick().await;
+
+            let mut modbus_conn = master_connection.lock().await;
+
+            Self::load_queries(&mut modbus_conn, &queries);
+
+            let results = modbus_conn.query().await;
+
+            if results.is_err() {
+                continue;
+            }
+
+            let results = results.unwrap();
+
+            Self::handle_results(results, bindings.clone(), tx.clone());
+        }
+    }
+
+    pub async fn watch(&mut self, tx: Sender<InsertValueMessage>) -> Result<()> {
         let mut queries_ordered_by_poll_time: HashMap<std::time::Duration, Vec<Query>> =
             HashMap::new();
 
@@ -62,19 +181,22 @@ impl ModbusCommContext {
         let socket = SocketAddr::new(self.config.ip, self.config.port);
         let mut master_connection = Arc::new(Mutex::new(ModbusMasterConnection::new_tcp(socket)));
 
-        /* 
-        for (interval, queries) in queries_ordered_by_poll_time
-        {
+        for (interval, queries) in queries_ordered_by_poll_time {
             let master_connection = master_connection.clone();
+            let bindings = self.value_bindings.clone();
+            let tx = tx.clone();
+
             tokio::task::spawn(async move {
-                self.query_loop(interval, queries, master_connection);
-            }); 
-        }*/
+                Self::query_loop(interval, queries, master_connection, tx, bindings);
+            });
+        }
         Ok(())
     }
 
-    fn build_value_bindings(config: &PolledConnection) -> Vec<ValueBinding> {
-        let mut value_bindings = vec![];
+    fn build_value_bindings(
+        config: &PolledConnection,
+    ) -> HashMap<ModbusAddress, Vec<ValueBinding>> {
+        let mut value_bindings: HashMap<ModbusAddress, Vec<ValueBinding>> = HashMap::new();
 
         for slave in &config.slaves {
             for address in &slave.values {
@@ -94,25 +216,26 @@ impl ModbusCommContext {
                     16
                 };
 
-                let register_ammount = if ending_bit % register_size == 0 {
+                let needed_ammount = if ending_bit % register_size == 0 {
                     ending_bit / register_size
                 } else {
                     ending_bit / register_size + 1
                 };
 
-                let mut needed_addresses = vec![];
-
-                for i in 0..register_ammount {
-                    needed_addresses.push(starting_address.address + i);
-                }
-
                 let binding = ValueBinding {
-                    starting_address,
-                    needed_addresses,
+                    starting_address: starting_address.clone(),
+                    needed_ammount,
                     config: address.clone(),
                 };
 
-                value_bindings.push(binding);
+                if value_bindings.contains_key(&starting_address) {
+                    value_bindings
+                        .get_mut(&starting_address)
+                        .unwrap()
+                        .push(binding);
+                } else {
+                    value_bindings.insert(starting_address, vec![binding]);
+                }
             }
         }
 

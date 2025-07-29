@@ -38,14 +38,6 @@ impl DataType {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum Endianness {
-    BigEndian,
-    LittleEndian,
-    BigEndianByteSwapped,
-    LittleEndianByteSwapped,
-}
-
 //I have to repeat this enum in order to use the derivation of serde traits :(
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Eq, Hash)]
 pub enum ModbusTable {
@@ -62,6 +54,14 @@ impl ModbusTable {
             ModbusTable::Coils => tweakable_modbus::ModbusTable::Coils,
             ModbusTable::InputRegisters => tweakable_modbus::ModbusTable::InputRegisters,
             ModbusTable::HoldingRegisters => tweakable_modbus::ModbusTable::HoldingRegisters,
+        }
+    }
+
+    pub fn register_size(&self) -> usize
+    {
+        match self {
+            ModbusTable::Coils | ModbusTable::DiscreteInput => 1,
+            ModbusTable::HoldingRegisters | ModbusTable::InputRegisters => 16
         }
     }
 }

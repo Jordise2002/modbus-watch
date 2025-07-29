@@ -1,5 +1,5 @@
-use anyhow::{anyhow, Result};
-use r2d2::{Pool, PooledConnection};
+use anyhow::Result;
+use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
 use sql_builder::SqlBuilder;
@@ -39,7 +39,7 @@ impl DbManager {
     pub async fn listen(&mut self) {
         loop {
             let insert = self.insert_channel.blocking_recv().unwrap();
-            self.insert_modbus_poll(insert.name, insert.value, insert.timestamp);
+            let _result= self.insert_modbus_poll(insert.name, insert.value, insert.timestamp);
         }
     }
 
@@ -60,8 +60,6 @@ impl DbManager {
     }
 
     fn init_db(&self, config: &Vec<PolledConnection>) -> Result<()> {
-        let conn = self.db.get()?;
-
         for connection_config in config {
             for slave_config in &connection_config.slaves {
                 for value_config in &slave_config.values {
@@ -88,7 +86,7 @@ impl DbManager {
             .sql()?;
 
         let conn = self.db.get()?;
-        conn.execute(&query, params![]);
+        let _rows = conn.execute(&query, params![])?;
         Ok(())
     }
 
@@ -101,7 +99,7 @@ pub fn insert_modbus_poll(&self, name: String, value: Vec<u8>, timestamp: std::t
 
     let secs_since_epoch = timestamp.duration_since(UNIX_EPOCH)?.as_secs();
 
-    conn.execute(&query, params![name, secs_since_epoch, value]);
+    let _rows = conn.execute(&query, params![name, secs_since_epoch, value])?;
     
     Ok(())
 }

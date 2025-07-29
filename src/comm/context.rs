@@ -2,13 +2,13 @@ use anyhow::Result;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::time;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
 use tweakable_modbus::{
-    ModbusAddress, ModbusDataType, ModbusMasterConnection, ModbusResult, ModbusTable,
+    ModbusAddress, ModbusMasterConnection, ModbusResult, ModbusTable,
 };
 
+use crate::comm::value_processing;
 use crate::data::InsertValueMessage;
 use crate::model::{PolledConnection, PolledValue};
 
@@ -23,7 +23,6 @@ pub struct Query {
 }
 
 pub struct ValueBinding {
-    starting_address: ModbusAddress,
     needed_ammount: u16,
     config: PolledValue,
 }
@@ -31,10 +30,11 @@ pub struct ModbusCommContext {
     queries: Vec<Query>,
     value_bindings: Arc<HashMap<ModbusAddress, Vec<ValueBinding>>>,
     config: PolledConnection,
+    insert_channel: Sender<InsertValueMessage>,
 }
 
 impl ModbusCommContext {
-    pub fn new(config: PolledConnection) -> Self {
+    pub fn new(config: PolledConnection, insert_channel: Sender<InsertValueMessage>) -> Self {
         let queries = Self::build_queries(&config);
 
         let value_bindings = Arc::new(Self::build_value_bindings(&config));
@@ -43,12 +43,11 @@ impl ModbusCommContext {
             config,
             queries,
             value_bindings,
+            insert_channel,
         }
     }
 
-    fn format_value(registers: Vec<ModbusDataType>, config: &PolledValue) -> Vec<u8> {
-        
-    }
+
 
     fn load_queries(modbus_conn: &mut ModbusMasterConnection, queries: &Vec<Query>) {
         for query in queries {
@@ -89,7 +88,7 @@ impl ModbusCommContext {
         }
     }
 
-    fn handle_results(
+    async fn handle_results(
         results: HashMap<ModbusAddress, ModbusResult>,
         bindings: Arc<HashMap<ModbusAddress, Vec<ValueBinding>>>,
         tx: Sender<InsertValueMessage>,
@@ -127,7 +126,8 @@ impl ModbusCommContext {
                     continue;
                 }
 
-                let value = Self::format_value(value_registers, &address_binding.config);
+                let value = value_processing::format_value(value_registers, &address_binding.config);
+
 
                 let insert = InsertValueMessage {
                     name: address_binding.config.id.clone(),
@@ -135,7 +135,7 @@ impl ModbusCommContext {
                     value,
                 };
 
-                tx.send(insert);
+                tx.send(insert).await.expect("Couldn't send message to db");
             }
         }
     }
@@ -143,6 +143,7 @@ impl ModbusCommContext {
     pub async fn query_loop(
         interval: std::time::Duration,
         queries: Vec<Query>,
+        params: tweakable_modbus::ModbusMasterConnectionParams,
         master_connection: Arc<Mutex<ModbusMasterConnection>>,
         tx: Sender<InsertValueMessage>,
         bindings: Arc<HashMap<ModbusAddress, Vec<ValueBinding>>>,
@@ -155,7 +156,7 @@ impl ModbusCommContext {
 
             Self::load_queries(&mut modbus_conn, &queries);
 
-            let results = modbus_conn.query().await;
+            let results = modbus_conn.query_with_params(params).await;
 
             if results.is_err() {
                 continue;
@@ -163,11 +164,11 @@ impl ModbusCommContext {
 
             let results = results.unwrap();
 
-            Self::handle_results(results, bindings.clone(), tx.clone());
+            Self::handle_results(results, bindings.clone(), tx.clone()).await;
         }
     }
 
-    pub async fn watch(&mut self, tx: Sender<InsertValueMessage>) -> Result<()> {
+    pub async fn watch(&mut self) -> Result<()> {
         let mut queries_ordered_by_poll_time: HashMap<std::time::Duration, Vec<Query>> =
             HashMap::new();
 
@@ -179,15 +180,27 @@ impl ModbusCommContext {
         }
 
         let socket = SocketAddr::new(self.config.ip, self.config.port);
-        let mut master_connection = Arc::new(Mutex::new(ModbusMasterConnection::new_tcp(socket)));
+        let master_connection = Arc::new(Mutex::new(ModbusMasterConnection::new_tcp(socket)));
+
+        let params = tweakable_modbus::ModbusMasterConnectionParams {
+            max_response_time: self.config.config.max_response_time,
+            max_simultaneous_transactions: self.config.config.max_simultaneous_connections,
+        };
 
         for (interval, queries) in queries_ordered_by_poll_time {
             let master_connection = master_connection.clone();
             let bindings = self.value_bindings.clone();
-            let tx = tx.clone();
+            let tx = self.insert_channel.clone();
 
             tokio::task::spawn(async move {
-                Self::query_loop(interval, queries, master_connection, tx, bindings);
+                Self::query_loop(
+                    interval,
+                    queries,
+                    params.clone(),
+                    master_connection,
+                    tx,
+                    bindings,
+                ).await;
             });
         }
         Ok(())
@@ -223,7 +236,6 @@ impl ModbusCommContext {
                 };
 
                 let binding = ValueBinding {
-                    starting_address: starting_address.clone(),
                     needed_ammount,
                     config: address.clone(),
                 };

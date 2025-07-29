@@ -36,7 +36,7 @@ async fn main() {
         }
     }
 
-    let (tx, mut rx) = mpsc::channel::<data::InsertValueMessage>(1024);
+    let (tx, rx) = mpsc::channel::<data::InsertValueMessage>(1024);
 
     let mut db = data::DbManager::new(args.db_file, &config, rx).unwrap_or_else(|e| {
         eprintln!("Couldn't init db: {}", e);
@@ -44,10 +44,17 @@ async fn main() {
     });
 
     tokio::spawn(async move {
-        db.listen();
+        db.listen().await;
     });
 
-    let mut modbus_watcher = ModbusWatcher::new(config);
+    let mut modbus_watcher = ModbusWatcher::new(config, tx);
 
-    modbus_watcher.watch().unwrap();
+    modbus_watcher.watch().await.unwrap_or_else(|e| {
+        eprintln!("Couldn't init polling tasks: {}", e);
+        std::process::exit(1);
+    });
+
+    tokio::signal::ctrl_c().await.unwrap();
+
+    println!("polling interrupted by user, stopping process");
 }

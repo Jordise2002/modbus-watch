@@ -1,13 +1,26 @@
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::model::{DataType, Endianness, ModbusTable};
+use crate::model::{DataType, ModbusTable};
 
 const MAX_VALUE_BIT_LENGTH: u16 = 64;
 
 fn default_starting_bit() -> u8 {
     0
 }
+
+fn default_byte_swap() -> bool {
+    false
+}
+
+fn default_word_swap() -> bool {
+    false
+}
+
+fn default_double_word_swap() -> bool {
+    false
+}
+
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PolledValue {
@@ -21,7 +34,12 @@ pub struct PolledValue {
     pub data_type: DataType,
     pub table: ModbusTable,
 
-    pub endianness: Endianness,
+    #[serde(default = "default_byte_swap")]
+    pub byte_swap: bool,
+    #[serde(default = "default_word_swap")]
+    pub word_swap: bool,
+    #[serde(default = "default_double_word_swap")]
+    pub double_word_swap: bool,
 
     #[serde(with = "humantime_serde")]
     pub poll_time: std::time::Duration,
@@ -68,12 +86,7 @@ impl PolledValue {
             ));
         }
 
-        let register_size =
-            if self.table == ModbusTable::Coils || self.table == ModbusTable::DiscreteInput {
-                1
-            } else {
-                16
-            };
+        let register_size = self.table.register_size() as u16;
 
         let ending_bit = self.starting_bit as u16 + self.bit_length;
 

@@ -17,10 +17,10 @@ anyhow = "1.0.98"
 #Arguments
 clap = { version = "4.5.40", features = ["derive"] }
 #DB
-sql-builder = "3.1.1"
 rusqlite = { version = "0.36", features = ["bundled"] }
 r2d2 = "0.8.10"
 r2d2_sqlite = "0.30.0"
+#logs
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
 tracing-appender = "0.2.3"

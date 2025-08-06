@@ -423,7 +423,6 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
- "sql-builder",
  "tokio",
  "tracing",
  "tracing-appender",
@@ -800,16 +799,6 @@ checksum = "e22376abed350d73dd1cd119b57ffccad95b4e585a7cda43e286245ce23c0678"
 dependencies = [
  "libc",
  "windows-sys 0.52.0",
-]
-
-[[package]]
-name = "sql-builder"
-version = "3.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1008d95d2ec2d062959352527be30e10fec42a1aa5e5a48d990a5ff0fb9bdc0"
-dependencies = [
- "anyhow",
- "thiserror",
 ]
 
 [[package]]

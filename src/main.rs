@@ -5,7 +5,7 @@ use model::PolledConnection;
 
 use std::io;
 use tokio::sync::mpsc;
-use tracing::{info, Level};
+use tracing::{error, info, Level};
 use tracing_appender::rolling;
 use tracing_subscriber::{fmt, EnvFilter};
 
@@ -60,6 +60,8 @@ fn init_logger(
             .with_writer(non_blocking)
             .with_ansi(false)
             .with_env_filter(env_filter)
+            .with_file(false)
+            .with_target(false)
             .finish();
 
         tracing::subscriber::set_global_default(subscriber)
@@ -71,6 +73,8 @@ fn init_logger(
         let subscriber = fmt()
             .with_writer(io::stdout)
             .with_env_filter(env_filter)
+            .with_file(false)
+            .with_target(false)
             .finish();
 
         tracing::subscriber::set_global_default(subscriber)
@@ -83,23 +87,6 @@ fn init_logger(
 async fn main() {
     let args = Args::parse();
 
-    let config = std::fs::read_to_string(&args.config_file).unwrap_or_else(|e| {
-        eprintln!("Couldn't read config file: {}", e);
-        std::process::exit(1);
-    });
-
-    let config: Vec<PolledConnection> = serde_json::from_str(&config).unwrap_or_else(|e| {
-        eprintln!("Couldn't parse config file: {}", e);
-        std::process::exit(1);
-    });
-
-    for connection in &config {
-        if let Err(err) = connection.validate() {
-            eprintln!("Wrong config:\n{}", err);
-            std::process::exit(1);
-        }
-    }
-
     //We have to keep the worker_guard alive
     let _worker_guard = if args.log_level != LogLevel::No {
         init_logger(args.log_level, args.log_file)
@@ -107,12 +94,27 @@ async fn main() {
         None
     };
 
-    info!("hola");
+    let config = std::fs::read_to_string(&args.config_file).unwrap_or_else(|e| {
+        error!("Couldn't read config file: {}", e);
+        std::process::exit(1);
+    });
+
+    let config: Vec<PolledConnection> = serde_json::from_str(&config).unwrap_or_else(|e| {
+        error!("Couldn't parse config file: {}", e);
+        std::process::exit(1);
+    });
+
+    for connection in &config {
+        if let Err(err) = connection.validate() {
+            error!("Wrong config:\n{}", err);
+            std::process::exit(1);
+        }
+    }
 
     let (tx, rx) = mpsc::channel::<data::InsertValueMessage>(1024);
 
     let mut db = data::DbManager::new(args.db_file, &config, rx).unwrap_or_else(|e| {
-        eprintln!("Couldn't init db: {}", e);
+        error!("Couldn't init db: {}", e);
         std::process::exit(1);
     });
 
@@ -123,7 +125,7 @@ async fn main() {
     let mut modbus_watcher = ModbusWatcher::new(config, tx);
 
     modbus_watcher.watch().await.unwrap_or_else(|e| {
-        eprintln!("Couldn't init polling tasks: {}", e);
+        error!("Couldn't init polling tasks: {}", e);
         std::process::exit(1);
     });
 

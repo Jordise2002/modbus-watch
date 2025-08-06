@@ -4,9 +4,8 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
-use tweakable_modbus::{
-    ModbusAddress, ModbusMasterConnection, ModbusResult, ModbusTable,
-};
+use tracing::{info,debug, info_span, warn, Instrument};
+use tweakable_modbus::{ModbusAddress, ModbusMasterConnection, ModbusResult, ModbusTable};
 
 use crate::comm::value_processing;
 use crate::data::InsertValueMessage;
@@ -46,8 +45,6 @@ impl ModbusCommContext {
             insert_channel,
         }
     }
-
-
 
     fn load_queries(modbus_conn: &mut ModbusMasterConnection, queries: &Vec<Query>) {
         for query in queries {
@@ -123,17 +120,27 @@ impl ModbusCommContext {
                 }
 
                 if !success {
+                    warn!(
+                        "Registers were missing to build value {}",
+                        address_binding.config.id
+                    );
                     continue;
                 }
 
-                let value = value_processing::format_value(value_registers, &address_binding.config);
-
+                let value =
+                    value_processing::format_value(value_registers, &address_binding.config);
 
                 let insert = InsertValueMessage {
                     name: address_binding.config.id.clone(),
                     timestamp: std::time::SystemTime::now(),
-                    value,
+                    value: value.clone(),
                 };
+
+                info!(
+                    "Value {} received poll {:?}",
+                    address_binding.config.id.clone(),
+                    value
+                );
 
                 tx.send(insert).await.expect("Couldn't send message to db");
             }
@@ -141,14 +148,15 @@ impl ModbusCommContext {
     }
 
     pub async fn query_loop(
-        interval: std::time::Duration,
+        duration: std::time::Duration,
         queries: Vec<Query>,
         params: tweakable_modbus::ModbusMasterConnectionParams,
         master_connection: Arc<Mutex<ModbusMasterConnection>>,
         tx: Sender<InsertValueMessage>,
         bindings: Arc<HashMap<ModbusAddress, Vec<ValueBinding>>>,
     ) {
-        let mut interval = tokio::time::interval(interval);
+        let mut interval = tokio::time::interval(duration);
+
         loop {
             interval.tick().await;
 
@@ -158,7 +166,13 @@ impl ModbusCommContext {
 
             let results = modbus_conn.query_with_params(params).await;
 
-            if results.is_err() {
+            debug!("Modbus queries sent");
+
+            if let Err(err) = results {
+                warn!(
+                    "Modbus query error: \"{}\", proceeding to next query",
+                    err.to_string()
+                );
                 continue;
             }
 
@@ -187,21 +201,27 @@ impl ModbusCommContext {
             max_simultaneous_transactions: self.config.config.max_simultaneous_connections,
         };
 
+        let span = info_span!("Modbus connection", ip = %self.config.ip.to_string(), port = %self.config.port.to_string());
+
         for (interval, queries) in queries_ordered_by_poll_time {
             let master_connection = master_connection.clone();
             let bindings = self.value_bindings.clone();
             let tx = self.insert_channel.clone();
 
-            tokio::task::spawn(async move {
-                Self::query_loop(
-                    interval,
-                    queries,
-                    params.clone(),
-                    master_connection,
-                    tx,
-                    bindings,
-                ).await;
-            });
+            tokio::task::spawn(
+                async move {
+                    Self::query_loop(
+                        interval,
+                        queries,
+                        params.clone(),
+                        master_connection,
+                        tx,
+                        bindings,
+                    )
+                    .await;
+                }
+                .instrument(span.clone()),
+            );
         }
         Ok(())
     }

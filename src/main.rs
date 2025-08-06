@@ -44,6 +44,8 @@ struct Args {
     log_level: LogLevel,
     #[arg(long = "log-file", default_value = "")]
     log_file: String,
+    #[arg(long = "api-port", default_value = "8000")]
+    api_port: u16
 }
 
 fn init_logger(
@@ -130,7 +132,7 @@ async fn main() {
         std::process::exit(1);
     });
 
-    api::serve_api(config).await;
+    api::serve_api(config, args.api_port).await;
 
     tokio::signal::ctrl_c().await.unwrap();
 

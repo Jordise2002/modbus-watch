@@ -1,18 +1,82 @@
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 
-use model::PolledConnection;
 use comm::ModbusWatcher;
-use tokio::sync::mpsc;
+use model::PolledConnection;
 
+use std::io;
+use tokio::sync::mpsc;
+use tracing::{info, Level};
+use tracing_appender::rolling;
+use tracing_subscriber::{fmt, EnvFilter};
+
+mod comm;
 mod data;
 mod model;
-mod comm;
+
+#[derive(Debug, Clone, ValueEnum, PartialEq)]
+enum LogLevel {
+    No,
+    Debug,
+    Info,
+    Warning,
+    Error,
+}
+
+impl LogLevel {
+    pub fn to_tracing_level(&self) -> Level {
+        match self {
+            LogLevel::Debug => Level::DEBUG,
+            LogLevel::No => panic!("Shouldn't be called"),
+            LogLevel::Info => Level::INFO,
+            LogLevel::Warning => Level::WARN,
+            LogLevel::Error => Level::ERROR,
+        }
+    }
+}
 
 #[derive(Parser, Debug)]
 struct Args {
     config_file: std::path::PathBuf,
-    #[arg(default_value = "modbus-watch.db3")]
+    #[arg(long = "db", default_value = "modbus-watch.db3")]
     db_file: std::path::PathBuf,
+    #[arg(long = "log-level", value_enum, default_value_t = LogLevel::Info)]
+    log_level: LogLevel,
+    #[arg(long = "log-file", default_value = "")]
+    log_file: String,
+}
+
+fn init_logger(
+    log_level: LogLevel,
+    log_file: String,
+) -> Option<tracing_appender::non_blocking::WorkerGuard> {
+    let env_filter = EnvFilter::from_default_env()
+        .add_directive(log_level.to_tracing_level().as_str().parse().unwrap());
+
+    if !log_file.is_empty() {
+        let file_appender = rolling::daily(".", log_file);
+        let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+
+        let subscriber = fmt()
+            .with_writer(non_blocking)
+            .with_ansi(false)
+            .with_env_filter(env_filter)
+            .finish();
+
+        tracing::subscriber::set_global_default(subscriber)
+            .expect("No se pudo establecer subscriber para archivo");
+
+        //We need to keep the worker guard alive
+        Some(guard)
+    } else {
+        let subscriber = fmt()
+            .with_writer(io::stdout)
+            .with_env_filter(env_filter)
+            .finish();
+
+        tracing::subscriber::set_global_default(subscriber)
+            .expect("No se pudo establecer subscriber para stdout");
+        None
+    }
 }
 
 #[tokio::main]
@@ -36,6 +100,15 @@ async fn main() {
         }
     }
 
+    //We have to keep the worker_guard alive
+    let _worker_guard = if args.log_level != LogLevel::No {
+        init_logger(args.log_level, args.log_file)
+    } else {
+        None
+    };
+
+    info!("hola");
+
     let (tx, rx) = mpsc::channel::<data::InsertValueMessage>(1024);
 
     let mut db = data::DbManager::new(args.db_file, &config, rx).unwrap_or_else(|e| {
@@ -56,5 +129,5 @@ async fn main() {
 
     tokio::signal::ctrl_c().await.unwrap();
 
-    println!("polling interrupted by user, stopping process");
+    info!("polling interrupted by user, stopping process");
 }

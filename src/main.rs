@@ -12,6 +12,7 @@ use tracing_subscriber::{fmt, EnvFilter};
 mod comm;
 mod data;
 mod model;
+mod api;
 
 #[derive(Debug, Clone, ValueEnum, PartialEq)]
 enum LogLevel {
@@ -122,12 +123,14 @@ async fn main() {
         db.listen().await;
     });
 
-    let mut modbus_watcher = ModbusWatcher::new(config, tx);
+    let mut modbus_watcher = ModbusWatcher::new(config.clone(), tx);
 
     modbus_watcher.watch().await.unwrap_or_else(|e| {
         error!("Couldn't init polling tasks: {}", e);
         std::process::exit(1);
     });
+
+    api::serve_api(config).await;
 
     tokio::signal::ctrl_c().await.unwrap();
 

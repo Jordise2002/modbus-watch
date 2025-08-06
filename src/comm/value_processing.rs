@@ -1,4 +1,4 @@
-use crate::model::PolledValue;
+use crate::model::{ModbusTable, PolledValue};
 use tweakable_modbus::ModbusDataType;
 
 fn apply_endianness(
@@ -101,9 +101,21 @@ fn apply_mask(data: &Vec<u8>, start_bit: usize, length: usize) -> Vec<u8> {
 }
 
 pub fn format_value(registers: Vec<ModbusDataType>, config: &PolledValue) -> Vec<u8> {
-    let bytes = apply_endianness(&registers, config.byte_swap, config.word_swap, config.double_word_swap);
+    let mut bytes = apply_endianness(
+        &registers,
+        config.byte_swap,
+        config.word_swap,
+        config.double_word_swap,
+    );
 
-    let bytes = apply_mask(&bytes, config.starting_bit as usize, config.bit_length as usize);
+    if config.table == ModbusTable::InputRegisters || config.table == ModbusTable::HoldingRegisters
+    {
+        bytes = apply_mask(
+            &bytes,
+            config.starting_bit as usize,
+            config.bit_length as usize,
+        );
+    }
 
-    return bytes
+    return bytes;
 }

@@ -38,8 +38,10 @@ impl DbManager {
 
     pub async fn listen(&mut self) {
         loop {
-            let insert = self.insert_channel.blocking_recv().unwrap();
-            let _result= self.insert_modbus_poll(insert.name, insert.value, insert.timestamp);
+            let insert = self.insert_channel.recv().await.unwrap();
+            let _result = self
+                .insert_modbus_poll(insert.name, insert.value, insert.timestamp)
+                .unwrap();
         }
     }
 
@@ -63,7 +65,7 @@ impl DbManager {
         for connection_config in config {
             for slave_config in &connection_config.slaves {
                 for value_config in &slave_config.values {
-                    self.insert_modbus_value(value_config)?;
+                    self.insert_modbus_value(value_config, slave_config.id)?;
                 }
             }
         }
@@ -71,37 +73,40 @@ impl DbManager {
         Ok(())
     }
 
-    fn insert_modbus_value(&self, config: &PolledValue) -> Result<()> {
+    fn insert_modbus_value(&self, config: &PolledValue, slave_id: u8) -> Result<()> {
         let table_name = format!("{:?}", config.table);
         let config_json = serde_json::to_string(&config)?;
-        let query = SqlBuilder::insert_into("modbus_values")
-            .fields(&["name", "address", "modbus_table", "slave_id", "config"])
-            .values(&[
-                &config.id,
-                &config.starting_address.to_string(),
-                &table_name,
-                &config.id,
-                &config_json,
-            ])
-            .sql()?;
+        let query = "INSERT OR REPLACE INTO modbus_values (
+            name, address, modbus_table, slave_id, config
+        ) VALUES (?, ?, ?, ?, ?)";
 
         let conn = self.db.get()?;
-        let _rows = conn.execute(&query, params![])?;
+        let _rows = conn.execute(
+            &query,
+            params![
+                config.id,
+                config.starting_address,
+                table_name,
+                slave_id,
+                config_json
+            ],
+        )?;
         Ok(())
     }
 
+    pub fn insert_modbus_poll(
+        &self,
+        name: String,
+        value: Vec<u8>,
+        timestamp: std::time::SystemTime,
+    ) -> Result<()> {
+        let query = "INSERT INTO modbus_polls (value_id, timestamp, value) VALUES (?, ?, ?)";
+        let conn = self.db.get()?;
 
-pub fn insert_modbus_poll(&self, name: String, value: Vec<u8>, timestamp: std::time::SystemTime) -> Result<()>
-{
-    let query = SqlBuilder::insert_into("modbus_polls").fields(&["value_id", "timestamp", "value"]).sql()?;
+        let secs_since_epoch = timestamp.duration_since(UNIX_EPOCH)?.as_secs();
 
-    let conn = self.db.get()?;
+        let _rows = conn.execute(&query, params![name, secs_since_epoch, value])?;
 
-    let secs_since_epoch = timestamp.duration_since(UNIX_EPOCH)?.as_secs();
-
-    let _rows = conn.execute(&query, params![name, secs_since_epoch, value])?;
-    
-    Ok(())
-}
-
+        Ok(())
+    }
 }

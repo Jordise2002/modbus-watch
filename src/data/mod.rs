@@ -1,17 +1,17 @@
 use anyhow::Result;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
-use rusqlite::params;
-use serde::de::value;
-use std::time::UNIX_EPOCH;
+use std::sync::Arc;
 use tokio::sync::mpsc::Receiver;
 use tracing::debug;
 use tracing::error;
 use tracing::instrument;
+use serde::{Serialize, Deserialize};
 
 use crate::model::PolledConnection;
-use crate::model::PolledValue;
 
+pub mod read;
+mod write;
 mod tables;
 
 pub struct InsertValueMessage {
@@ -19,9 +19,16 @@ pub struct InsertValueMessage {
     pub timestamp: std::time::SystemTime,
     pub value: Vec<u8>,
 }
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ModbusPoll {
+    value: Vec<u8>,
+    secs_since_epoch: i64
+}
+
 pub struct DbManager {
     path: std::path::PathBuf,
-    db: Pool<SqliteConnectionManager>,
+    db: Arc<Pool<SqliteConnectionManager>>,
     insert_channel: Receiver<InsertValueMessage>,
 }
 
@@ -31,7 +38,7 @@ impl DbManager {
         config: &Vec<PolledConnection>,
         insert_channel: Receiver<InsertValueMessage>,
     ) -> Result<Self> {
-        let db = Self::build_db(path.clone())?;
+        let db = Arc::new(Self::build_db(path.clone())?);
         let db_manager = DbManager {
             db,
             insert_channel,
@@ -43,16 +50,29 @@ impl DbManager {
         Ok(db_manager)
     }
 
+    pub fn get_db(&self) -> Arc<Pool<SqliteConnectionManager>> {
+        self.db.clone()
+    }
+
     pub async fn listen(&mut self) {
         debug!("DB {} started listening", self.path.to_string_lossy());
         loop {
             let insert = self.insert_channel.recv().await.unwrap();
-            let result = self.insert_modbus_poll(insert.name.clone(), insert.value.clone(), insert.timestamp);
+            let conn = self.db.get().unwrap();
+            let result = write::insert_modbus_poll(
+                &conn,
+                insert.name.clone(),
+                insert.value.clone(),
+                insert.timestamp,
+            );
             if let Err(err) = result {
                 error!("error inserting poll into db: {}", err.to_string());
             }
 
-            debug!("Inserted poll {:?} for value {} into db", insert.value, insert.name);
+            debug!(
+                "Inserted poll {:?} for value {} into db",
+                insert.value, insert.name
+            );
         }
     }
 
@@ -77,50 +97,14 @@ impl DbManager {
     }
 
     fn init_db(&self, config: &Vec<PolledConnection>) -> Result<()> {
+        let conn = self.db.get()?;
         for connection_config in config {
             for slave_config in &connection_config.slaves {
                 for value_config in &slave_config.values {
-                    self.insert_modbus_value(value_config, slave_config.id)?;
+                    write::insert_modbus_value(&conn, value_config, slave_config.id)?;
                 }
             }
         }
-
-        Ok(())
-    }
-
-    fn insert_modbus_value(&self, config: &PolledValue, slave_id: u8) -> Result<()> {
-        let table_name = format!("{:?}", config.table);
-        let config_json = serde_json::to_string(&config)?;
-        let query = "INSERT OR REPLACE INTO modbus_values (
-            name, address, modbus_table, slave_id, config
-        ) VALUES (?, ?, ?, ?, ?)";
-
-        let conn = self.db.get()?;
-        let _rows = conn.execute(
-            &query,
-            params![
-                config.id,
-                config.starting_address,
-                table_name,
-                slave_id,
-                config_json
-            ],
-        )?;
-        Ok(())
-    }
-
-    pub fn insert_modbus_poll(
-        &self,
-        name: String,
-        value: Vec<u8>,
-        timestamp: std::time::SystemTime,
-    ) -> Result<()> {
-        let query = "INSERT INTO modbus_polls (value_id, timestamp, value) VALUES (?, ?, ?)";
-        let conn = self.db.get()?;
-
-        let secs_since_epoch = timestamp.duration_since(UNIX_EPOCH)?.as_secs();
-
-        let _rows = conn.execute(&query, params![name, secs_since_epoch, value])?;
 
         Ok(())
     }

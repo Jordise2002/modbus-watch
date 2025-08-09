@@ -121,6 +121,8 @@ async fn main() {
         std::process::exit(1);
     });
 
+    let api_db_access = db.get_db();
+
     tokio::spawn(async move {
         db.listen().await;
     });
@@ -132,7 +134,7 @@ async fn main() {
         std::process::exit(1);
     });
 
-    api::serve_api(config, args.api_port).await;
+    api::serve_api(config, api_db_access, args.api_port).await;
 
     tokio::signal::ctrl_c().await.unwrap();
 

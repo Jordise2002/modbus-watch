@@ -20,19 +20,3 @@ pub async fn get_config(State(state): State<Arc<ApiState>>, Path(id): Path<Strin
 
 }
 
-pub async fn list_config(State(state): State<Arc<ApiState>>) -> Json<Vec<String>>
-{
-    let mut values = vec![];
-
-    for connection in &state.config
-    {
-        for slave in &connection.slaves {
-            for value in &slave.values
-            {
-                values.push(value.id.clone());
-            }
-        }
-    }
-
-    Json(values)
-}

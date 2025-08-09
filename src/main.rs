@@ -13,6 +13,7 @@ mod comm;
 mod data;
 mod model;
 mod api;
+mod value_processing;
 
 #[derive(Debug, Clone, ValueEnum, PartialEq)]
 enum LogLevel {

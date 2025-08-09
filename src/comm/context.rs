@@ -7,7 +7,7 @@ use tokio::sync::Mutex;
 use tracing::{info,debug, info_span, warn, Instrument};
 use tweakable_modbus::{ModbusAddress, ModbusMasterConnection, ModbusResult, ModbusTable};
 
-use crate::comm::value_processing;
+use crate::value_processing;
 use crate::data::InsertValueMessage;
 use crate::model::{PolledConnection, PolledValue};
 
@@ -128,7 +128,7 @@ impl ModbusCommContext {
                 }
 
                 let value =
-                    value_processing::format_value(value_registers, &address_binding.config);
+                    value_processing::value_to_bytes(value_registers, &address_binding.config);
 
                 let insert = InsertValueMessage {
                     name: address_binding.config.id.clone(),

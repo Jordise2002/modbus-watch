@@ -38,6 +38,13 @@ impl DataType {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub enum Value {
+    Integer(i128),
+    FloatingPoint(f64),
+    Boolean(bool)
+}
+
 //I have to repeat this enum in order to use the derivation of serde traits :(
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Eq, Hash)]
 pub enum ModbusTable {

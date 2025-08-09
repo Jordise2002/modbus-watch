@@ -1,4 +1,4 @@
-use crate::model::PolledValue;
+use crate::model::{PolledValue, DataType};
 use crate::{api::ApiState, data::ModbusPoll};
 
 use axum::{
@@ -14,11 +14,31 @@ pub async fn get_value(
     State(state): State<Arc<ApiState>>,
     Path(id): Path<String>,
 ) -> Result<Json<ModbusPoll>, Response> {
+    let mut found = false;
+    let mut data_type = DataType::Boolean;
+
+    'search_loop: for connection in &state.config
+    {
+        for slave in &connection.slaves {
+            for value in &slave.values {
+                if value.id == id {
+                    found = true;
+                    data_type = value.data_type.clone();
+                    break 'search_loop;  
+                }
+            }
+        }
+    }
+
+    if ! found {
+        return Err((StatusCode::NOT_FOUND, "Value was not configured").into_response());
+    }
+
     let db_conn = state.db.get().or_else(|_| {
         Err((StatusCode::INTERNAL_SERVER_ERROR, "Access to db failed").into_response())
     })?;
 
-    let poll = crate::data::read::get_last_poll(&db_conn, id);
+    let poll = crate::data::read::get_last_poll(&db_conn, id, data_type);
 
     if let Ok(poll) = poll {
         Ok(Json(poll))

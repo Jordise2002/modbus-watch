@@ -9,6 +9,7 @@ use tracing::instrument;
 use serde::{Serialize, Deserialize};
 
 use crate::model::PolledConnection;
+use crate::model::Value;
 
 pub mod read;
 mod write;
@@ -22,7 +23,7 @@ pub struct InsertValueMessage {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ModbusPoll {
-    value: Vec<u8>,
+    value: Value,
     secs_since_epoch: i64
 }
 

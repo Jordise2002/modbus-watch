@@ -5,7 +5,6 @@ use crate::{comm::context::ModbusCommContext, data::InsertValueMessage, model::P
 use anyhow::Result;
 
 mod context;
-mod value_processing;
 
 pub struct ModbusWatcher {
     contexts: Vec<ModbusCommContext>,

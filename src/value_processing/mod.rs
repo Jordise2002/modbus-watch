@@ -1,4 +1,6 @@
-use crate::model::{ModbusTable, PolledValue};
+use crate::model::{DataType, ModbusTable, PolledValue, Value};
+
+use anyhow::{anyhow, Result};
 use tweakable_modbus::ModbusDataType;
 
 fn apply_endianness(
@@ -18,7 +20,7 @@ fn apply_endianness(
     } else {
         for register in registers {
             if let ModbusDataType::Register(register) = register {
-                result.extend_from_slice(&register.to_be_bytes());
+                result.extend_from_slice(&register.to_le_bytes());
             }
         }
     }
@@ -100,7 +102,7 @@ fn apply_mask(data: &Vec<u8>, start_bit: usize, length: usize) -> Vec<u8> {
     result
 }
 
-pub fn format_value(registers: Vec<ModbusDataType>, config: &PolledValue) -> Vec<u8> {
+pub fn value_to_bytes(registers: Vec<ModbusDataType>, config: &PolledValue) -> Vec<u8> {
     let mut bytes = apply_endianness(
         &registers,
         config.byte_swap,
@@ -118,4 +120,72 @@ pub fn format_value(registers: Vec<ModbusDataType>, config: &PolledValue) -> Vec
     }
 
     return bytes;
+}
+
+pub fn format_value(raw_value: Vec<u8>, data_type: &DataType) -> Result<Value> {
+    if raw_value.is_empty() {
+        return Err(anyhow!("Value is empty"));
+    }
+    match data_type {
+        DataType::Boolean => {
+            if raw_value.len() != 1 {
+                return Err(anyhow!("Boolean values must be one byte long"));
+            }
+
+            Ok(Value::Boolean(raw_value[0] != 0))
+        }
+        DataType::Double => {
+            if raw_value.len() * 8 != data_type.min_bit_size() as usize {
+                return Err(anyhow!("Double values must be 8 bytes long"));
+            }
+
+            Ok(Value::FloatingPoint(f64::from_le_bytes(
+                raw_value.try_into().unwrap(),
+            )))
+        }
+        DataType::Float =>  {
+            if raw_value.len() * 8 != data_type.min_bit_size() as usize {
+                return Err(anyhow!("Float values must be 4 bytes long"));
+            }
+
+            let float_value = f32::from_le_bytes(raw_value.try_into().unwrap());
+
+            Ok(Value::FloatingPoint(float_value as f64))
+        }
+        DataType::Byte => {
+            let byte_value = u8::from_le_bytes(raw_value.try_into().unwrap());
+
+            Ok(Value::Integer(byte_value as i128))
+        }
+        DataType::SignedInteger16 => {
+            let signed_16_value = i16::from_le_bytes(raw_value.try_into().unwrap());
+
+            Ok(Value::Integer(signed_16_value as i128))
+        }
+        DataType::SignedInteger32 =>{
+            let signed_32_value = i32::from_le_bytes(raw_value.try_into().unwrap());
+
+            Ok(Value::Integer(signed_32_value as i128))
+        }
+        DataType::SignedInteger64 => {
+            let signed_64_value = i64::from_le_bytes(raw_value.try_into().unwrap());
+            
+            Ok(Value::Integer(signed_64_value as i128))
+        }
+        DataType::UnsignedInteger16 => {
+            let unsigned_16_value = u16::from_le_bytes(raw_value.try_into().unwrap());
+
+            Ok(Value::Integer(unsigned_16_value as i128))
+        }
+        DataType::UnsignedInteger32 => {
+            let unsigned_32_value = u32::from_le_bytes(raw_value.try_into().unwrap());
+
+            Ok(Value::Integer(unsigned_32_value as i128))
+        }
+        DataType::UnsignedInteger64 => {
+            let unsigned_64_value = u64::from_le_bytes(raw_value.try_into().unwrap());
+
+            Ok(Value::Integer(unsigned_64_value as i128))
+        }
+    }
 }

@@ -12,7 +12,7 @@ use crate::model::PolledConnection;
 use crate::model::Value;
 
 pub mod read;
-mod write;
+pub mod write;
 mod tables;
 
 pub struct InsertValueMessage {

@@ -1,4 +1,4 @@
-use crate::model::PolledValue;
+use crate::{aggregations::Period, model::PolledValue};
 
 use anyhow::Result;
 use r2d2_sqlite::SqliteConnectionManager;
@@ -40,6 +40,49 @@ pub fn insert_modbus_poll(
     let secs_since_epoch = timestamp.duration_since(UNIX_EPOCH)?.as_secs();
 
     let _rows = conn.execute(&query, params![name, secs_since_epoch, value])?;
+
+    Ok(())
+}
+
+pub fn delete_exceeding_polls(
+    conn: &r2d2::PooledConnection<SqliteConnectionManager>,
+    name: String,
+    max_polls: u64,
+) -> Result<()> {
+    conn.execute(
+        "
+    DELETE FROM modbus_polls
+    WHERE id IN (
+        SELECT id FROM modbus_polls
+        WHERE value_id = ?
+        ORDER BY timestamp DESC
+        LIMIT -1 OFFSET ?
+    )",
+        [name, max_polls.to_string()],
+    )?;
+
+    Ok(())
+}
+
+pub fn delete_exceeding_aggregations(
+    conn: &r2d2::PooledConnection<SqliteConnectionManager>,
+    name: String,
+    period: Period,
+    max_aggregations: u64,
+) -> Result<()> {
+    let period = format!("{:?}", period);
+    conn.execute(
+        "
+        DELETE FROM modbus_aggregates
+        WHERE id IN (
+            SELECT id FROM modbus_aggregates
+            WHERE value_id = ?
+            AND period = ?
+            ORDER BY start DESC
+            LIMIT -1 OFFSET ?
+        )",
+        [name, period, max_aggregations.to_string()],
+    )?;
 
     Ok(())
 }

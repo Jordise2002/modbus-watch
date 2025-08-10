@@ -21,6 +21,27 @@ fn default_double_word_swap() -> bool {
     false
 }
 
+fn default_max_polls_to_keep() -> Option<u64>
+{
+    //Aprox three hours of a 100ms poll time value
+    Some(3 * 60 * 60 * 10)
+}
+
+fn default_max_minute_aggregations_to_keep() -> Option<u64>
+{
+    //Three days of minutes aggregations
+    Some(24 * 60 * 60 * 3)
+}
+
+fn default_max_hour_aggregations_to_keep() -> Option<u64> {
+    //About a month
+    Some(24 * 31)
+}
+
+fn default_max_day_aggregations_to_keep() -> Option<u64>
+{
+    None
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PolledValue {
@@ -43,6 +64,15 @@ pub struct PolledValue {
 
     #[serde(with = "humantime_serde")]
     pub poll_time: std::time::Duration,
+
+    #[serde(default = "default_max_polls_to_keep")]
+    pub max_polls_to_keep: Option<u64>,
+    #[serde(default = "default_max_minute_aggregations_to_keep")]
+    pub max_minute_aggregations_to_keep: Option<u64>,
+    #[serde(default = "default_max_hour_aggregations_to_keep")]
+    pub max_hour_aggregations_to_keep: Option<u64>,
+    #[serde(default = "default_max_day_aggregations_to_keep")]
+    pub max_day_aggregations_to_keep: Option<u64>
 }
 
 impl PolledValue {

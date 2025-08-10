@@ -14,6 +14,7 @@ mod data;
 mod model;
 mod api;
 mod value_processing;
+mod aggregations;
 
 #[derive(Debug, Clone, ValueEnum, PartialEq)]
 enum LogLevel {
@@ -123,6 +124,7 @@ async fn main() {
     });
 
     let api_db_access = db.get_db();
+    let aggregation_db_access = db.get_db();
 
     tokio::spawn(async move {
         db.listen().await;
@@ -135,7 +137,9 @@ async fn main() {
         std::process::exit(1);
     });
 
-    api::serve_api(config, api_db_access, args.api_port).await;
+    api::serve_api(config.clone(), api_db_access, args.api_port).await;
+
+    aggregations::start_aggregation_building(aggregation_db_access, config).await;
 
     tokio::signal::ctrl_c().await.unwrap();
 

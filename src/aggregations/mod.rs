@@ -189,7 +189,7 @@ fn create_aggregates(
         .duration_since(info.last_min_aggregated)
         .unwrap()
         .as_secs()
-        > 60
+        >= 60
     {
         let mut start_time = info.last_min_aggregated;
         let mut finish_time = start_time + std::time::Duration::from_secs(60);
@@ -206,14 +206,14 @@ fn create_aggregates(
             start_time = finish_time;
             finish_time = start_time + std::time::Duration::from_secs(60);
         }
-        info.last_min_aggregated = finish_time;
+        info.last_min_aggregated = start_time;
     }
 
     if now
         .duration_since(info.last_hour_aggregated)
         .unwrap()
         .as_secs()
-        > 60 * 60
+        >= 60 * 60
     {
         let mut start_time = info.last_hour_aggregated;
         let mut finish_time = start_time + std::time::Duration::from_secs(60 * 60);
@@ -230,14 +230,14 @@ fn create_aggregates(
             start_time = finish_time;
             finish_time = start_time + std::time::Duration::from_secs(60 * 60);
         }
-        info.last_hour_aggregated = finish_time;
+        info.last_hour_aggregated = start_time;
     }
 
     if now
         .duration_since(info.last_day_aggregated)
         .unwrap()
         .as_secs()
-        > 60 * 60 * 24
+        >= 60 * 60 * 24
     {
         let mut start_time = info.last_day_aggregated;
         let mut finish_time = start_time + std::time::Duration::from_secs(60 * 60 * 24);
@@ -254,7 +254,7 @@ fn create_aggregates(
             start_time = finish_time;
             finish_time = start_time + std::time::Duration::from_secs(60 * 60 * 24);
         }
-        info.last_day_aggregated = finish_time;
+        info.last_day_aggregated = start_time;
     }
 }
 

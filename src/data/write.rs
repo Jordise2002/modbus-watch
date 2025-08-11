@@ -1,6 +1,11 @@
-use crate::{aggregations::Period, model::PolledValue};
+use crate::{
+    aggregations::{AggregationInfo, Period},
+    model::PolledValue,
+    value_processing,
+};
 
 use anyhow::Result;
+use clap::ArgGroup;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
 use std::time::UNIX_EPOCH;
@@ -40,6 +45,51 @@ pub fn insert_modbus_poll(
     let secs_since_epoch = timestamp.duration_since(UNIX_EPOCH)?.as_secs();
 
     let _rows = conn.execute(&query, params![name, secs_since_epoch, value])?;
+
+    Ok(())
+}
+
+pub fn insert_modbus_aggregate(
+    conn: &r2d2::PooledConnection<SqliteConnectionManager>,
+    aggregate_info: AggregationInfo,
+) -> Result<()> {
+    let period = format!("{:?}", aggregate_info.period);
+
+    let start = aggregate_info
+        .start_time
+        .duration_since(UNIX_EPOCH)?
+        .as_secs();
+    let finish = aggregate_info
+        .start_time
+        .duration_since(UNIX_EPOCH)?
+        .as_secs();
+
+    let average = value_processing::value_to_bytes(aggregate_info.aggregation.average);
+    let median = value_processing::value_to_bytes(aggregate_info.aggregation.median);
+    let moda = value_processing::value_to_bytes(aggregate_info.aggregation.moda);
+
+    let min = value_processing::value_to_bytes(aggregate_info.aggregation.min);
+    let max = value_processing::value_to_bytes(aggregate_info.aggregation.max);
+
+    let query = "INSERT INTO modbus_aggregates 
+    (value_id, period, start, finish, average, median, min, max, moda, ammount)
+    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+    let _rows = conn.execute(
+        &query,
+        params![
+            aggregate_info.value_id,
+            period,
+            start,
+            finish,
+            average,
+            median,
+            min,
+            max,
+            moda,
+            aggregate_info.aggregation.ammount
+        ],
+    )?;
 
     Ok(())
 }

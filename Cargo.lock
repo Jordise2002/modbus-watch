@@ -1265,7 +1265,7 @@ dependencies = [
 [[package]]
 name = "tweakable-modbus"
 version = "0.1.0"
-source = "git+https://github.com/Jordise2002/tweakable-modbus#93abad91fe18155c3ed901c55d25471a56f1af38"
+source = "git+https://github.com/Jordise2002/tweakable-modbus#d1d44947b8ad3f99f1b4be44d080b1c33bb1aade"
 dependencies = [
  "anyhow",
  "async-trait",

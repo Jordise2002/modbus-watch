@@ -144,4 +144,6 @@ async fn main() {
     tokio::signal::ctrl_c().await.unwrap();
 
     info!("polling interrupted by user, stopping process");
+
+    std::process::exit(0);
 }

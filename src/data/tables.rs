@@ -14,13 +14,14 @@ pub const POLL_TABLE: &str = "CREATE TABLE IF NOT EXISTS modbus_polls (
                             );";
 
 pub const AGGREGATES_TABLE: &str = "CREATE TABLE IF NOT EXISTS modbus_aggregates (
-                                    id INTEGER PRIMARY KEY,
+                                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                                     value_id TEXT NOT NULL REFERENCES modbus_values(name),
                                     period TEXT NOT NULL,
                                     start INTEGER NOT NULL,
                                     finish INTEGER NOT NULL,
                                     average blob,
                                     median blob,
+                                    moda blob,
                                     min blob,
                                     max blob,
                                     ammount INTEGER 

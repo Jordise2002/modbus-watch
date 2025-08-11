@@ -102,7 +102,7 @@ fn apply_mask(data: &Vec<u8>, start_bit: usize, length: usize) -> Vec<u8> {
     result
 }
 
-pub fn value_to_bytes(registers: Vec<ModbusDataType>, config: &PolledValue) -> Vec<u8> {
+pub fn registers_to_bytes(registers: Vec<ModbusDataType>, config: &PolledValue) -> Vec<u8> {
     let mut bytes = apply_endianness(
         &registers,
         config.byte_swap,
@@ -120,6 +120,20 @@ pub fn value_to_bytes(registers: Vec<ModbusDataType>, config: &PolledValue) -> V
     }
 
     return bytes;
+}
+
+pub fn value_to_bytes(value: Value) -> Vec<u8> {
+    match value {
+        Value::Integer(integer)  => {
+            integer.to_le_bytes().to_vec()
+        }
+        Value::FloatingPoint(floating) => {
+            floating.to_le_bytes().to_vec()
+        }
+        Value::Boolean(boolean) => {
+            vec![boolean as u8]
+        }
+    }
 }
 
 pub fn format_value(raw_value: Vec<u8>, data_type: &DataType) -> Result<Value> {

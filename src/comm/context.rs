@@ -4,12 +4,12 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
-use tracing::{info,debug, info_span, warn, Instrument};
+use tracing::{debug, error, info, info_span, warn, Instrument};
 use tweakable_modbus::{ModbusAddress, ModbusMasterConnection, ModbusResult, ModbusTable};
 
-use crate::value_processing;
 use crate::data::InsertValueMessage;
 use crate::model::{PolledConnection, PolledValue};
+use crate::value_processing;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Query {
@@ -128,7 +128,7 @@ impl ModbusCommContext {
                 }
 
                 let value =
-                    value_processing::value_to_bytes(value_registers, &address_binding.config);
+                    value_processing::registers_to_bytes(value_registers, &address_binding.config);
 
                 let insert = InsertValueMessage {
                     name: address_binding.config.id.clone(),

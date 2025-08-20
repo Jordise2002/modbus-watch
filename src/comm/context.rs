@@ -4,7 +4,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
-use tracing::{debug, error, info, info_span, warn, Instrument};
+use tracing::{debug, info, info_span, warn, Instrument};
 use tweakable_modbus::{ModbusAddress, ModbusMasterConnection, ModbusResult, ModbusTable};
 
 use crate::data::InsertValueMessage;

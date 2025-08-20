@@ -1,7 +1,9 @@
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::{sync::Arc, time::UNIX_EPOCH};
+use std::sync::Arc;
+use anyhow::{anyhow, Result};
 
 use crate::data;
 use crate::data::read::get_polls_between;
@@ -9,13 +11,28 @@ use crate::model::{DataType, PolledConnection, Value};
 
 mod build_aggregates;
 
-#[derive(PartialEq, Debug, Clone, Copy)]
+#[derive(PartialEq, Debug, Clone, Copy, Serialize, Deserialize)]
+#[repr(u8)]
 pub enum Period {
-    Minute,
-    Hour,
-    Day,
+    NoGrouping = 0,
+    Minute = 1,
+    Hour = 2,
+    Day = 3,
 }
 
+impl Period {
+    pub fn from_repr(raw_value: u8) -> Result<Self> {
+        match raw_value {
+            0 => Ok(Self::NoGrouping),
+            1 => Ok(Self::Minute),
+            2 => Ok(Self::Hour),
+            3 => Ok(Self::Day),
+            _ => Err(anyhow!("Value not supported for period!"))
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct AggregationInfo {
     pub value_id: String,
     pub period: Period,
@@ -24,6 +41,7 @@ pub struct AggregationInfo {
     pub aggregation: Aggregation,
 }
 
+#[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 pub struct Aggregation {
     pub average: Value,
     pub median: Value,
@@ -125,12 +143,12 @@ fn create_single_aggregate(
         return;
     }
 
-    let aggregate = match values.first().unwrap() {
+    let aggregate = match values.first().unwrap().value {
         Value::Integer(_) => {
             let integers: Vec<i128> = values
                 .into_iter()
                 .filter_map(|n| {
-                    if let Value::Integer(v) = n {
+                    if let Value::Integer(v) = n.value {
                         Some(v)
                     } else {
                         None
@@ -143,7 +161,7 @@ fn create_single_aggregate(
             let floating_points: Vec<f64> = values
                 .into_iter()
                 .filter_map(|n| {
-                    if let Value::FloatingPoint(v) = n {
+                    if let Value::FloatingPoint(v) = n.value {
                         Some(v)
                     } else {
                         None
@@ -156,7 +174,7 @@ fn create_single_aggregate(
             let booleans: Vec<bool> = values
                 .into_iter()
                 .filter_map(|n| {
-                    if let Value::Boolean(v) = n {
+                    if let Value::Boolean(v) = n.value {
                         Some(v)
                     } else {
                         None
@@ -269,7 +287,7 @@ async fn aggregation_periodic_task(
     loop {
         interval.tick().await;
 
-        let now = std::time::SystemTime::now();
+        let now: std::time::SystemTime = std::time::SystemTime::now();
 
         for (id, info) in &mut aggregation_info {
             create_aggregates(id, now, info, db_access.get().unwrap());

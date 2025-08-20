@@ -9,6 +9,7 @@ use std::sync::Arc;
 mod config;
 mod value;
 mod common;
+mod history;
 
 pub struct ApiState {
     pub config: Vec<PolledConnection>,
@@ -22,6 +23,8 @@ pub async fn serve_api(config: Vec<PolledConnection>, db: Arc<Pool<SqliteConnect
         .route("/config", get(common::list_values))
         .route("/value/{id}", get(value::get_value))
         .route("/value", get(common::list_values))
+        .route("/history/{id}", get(history::get_history))
+        .route("/history", get(common::list_values))
         .with_state(state);
 
     let api = Router::new().nest("/api/v1", api_v1);

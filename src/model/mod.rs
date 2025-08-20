@@ -5,7 +5,6 @@ mod slave;
 mod connection;
 
 pub use value::PolledValue;
-pub use slave::PolledSlave;
 pub use connection::PolledConnection;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

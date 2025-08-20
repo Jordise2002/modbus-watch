@@ -23,8 +23,9 @@ pub struct InsertValueMessage {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ModbusPoll {
-    value: Value,
-    secs_since_epoch: i64
+    pub value_id: String,
+    pub value: Value,
+    pub secs_since_epoch: u64
 }
 
 pub struct DbManager {

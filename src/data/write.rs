@@ -5,7 +5,6 @@ use crate::{
 };
 
 use anyhow::Result;
-use clap::ArgGroup;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
 use std::time::UNIX_EPOCH;

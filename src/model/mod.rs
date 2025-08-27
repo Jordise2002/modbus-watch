@@ -38,6 +38,7 @@ impl DataType {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum Value {
     Integer(i128),
     FloatingPoint(f64),

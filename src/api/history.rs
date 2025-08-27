@@ -5,12 +5,13 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
-use std::{sync::Arc, time:: UNIX_EPOCH, u64};
+use std::{sync::Arc, time::UNIX_EPOCH, u64};
 
 use crate::{
     aggregations::{AggregationInfo, Period},
     api::ApiState,
-    data::ModbusPoll, model::DataType,
+    data::ModbusPoll,
+    model::DataType,
 };
 
 #[derive(Debug, Deserialize)]
@@ -22,9 +23,10 @@ pub struct HistoryParams {
 }
 
 #[derive(PartialEq, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum HistoryResult {
-    AggregationValue { aggregation: AggregationInfo },
-    Value { value: ModbusPoll },
+    AggregationValue { aggregation_info: AggregationInfo },
+    Value { value_info: ModbusPoll },
 }
 
 pub async fn get_history(
@@ -34,7 +36,7 @@ pub async fn get_history(
 ) -> Result<Json<Vec<HistoryResult>>, Response> {
     let start_date = if let Some(start_date) = params.start_date {
         UNIX_EPOCH + std::time::Duration::from_secs(start_date)
-    }else {
+    } else {
         UNIX_EPOCH
     };
 
@@ -62,7 +64,7 @@ pub async fn get_history(
         }
     }
 
-    if ! found {
+    if !found {
         return Err((StatusCode::NOT_FOUND, "Value was not configured").into_response());
     }
 
@@ -73,34 +75,24 @@ pub async fn get_history(
     let mut result = vec![];
 
     let aggregations = crate::data::read::get_aggregates_between(
-        &conn,
-        &value_id,
-        &data_type,
-        start_date,
-        end_date,
-        max_group,
-        min_group,
+        &conn, &value_id, &data_type, start_date, end_date, max_group, min_group,
     )
     .or_else(|_| Err((StatusCode::INTERNAL_SERVER_ERROR, "Access to db failed").into_response()))?;
 
-    for aggregation in aggregations {
-        result.push(HistoryResult::AggregationValue { aggregation });
+    for aggregation_info in aggregations {
+        result.push(HistoryResult::AggregationValue { aggregation_info });
     }
 
     if min_group == Period::NoGrouping {
         let polls = crate::data::read::get_polls_between(
-            &conn,
-            &value_id,
-            &data_type,
-            start_date,
-            end_date,
+            &conn, &value_id, &data_type, start_date, end_date,
         )
         .or_else(|_| {
             Err((StatusCode::INTERNAL_SERVER_ERROR, "Access to db failed").into_response())
         })?;
 
-        for value in polls {
-            result.push(HistoryResult::Value { value });
+        for value_info in polls {
+            result.push(HistoryResult::Value { value_info });
         }
     }
 

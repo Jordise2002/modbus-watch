@@ -38,6 +38,7 @@ pub struct AggregationInfo {
     pub period: Period,
     pub start_time: std::time::SystemTime,
     pub finish_time: std::time::SystemTime,
+    #[serde(flatten)]
     pub aggregation: Aggregation,
 }
 

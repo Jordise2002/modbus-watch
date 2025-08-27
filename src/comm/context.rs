@@ -130,7 +130,15 @@ impl ModbusCommContext {
                 let value =
                     value_processing::registers_to_bytes(value_registers, &address_binding.config);
 
-                let value = value_processing::format_value(value, &address_binding.config.data_type).unwrap();
+                info!(
+                    "Value {} received poll {:?}",
+                    address_binding.config.id.clone(),
+                    value
+                );
+
+                let value =
+                    value_processing::format_value(value, &address_binding.config.data_type)
+                        .unwrap();
 
                 let value = value_processing::value_to_bytes(value);
 
@@ -139,12 +147,6 @@ impl ModbusCommContext {
                     timestamp: std::time::SystemTime::now(),
                     value: value.clone(),
                 };
-
-                info!(
-                    "Value {} received poll {:?}",
-                    address_binding.config.id.clone(),
-                    value
-                );
 
                 tx.send(insert).await.expect("Couldn't send message to db");
             }

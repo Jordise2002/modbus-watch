@@ -52,7 +52,7 @@ pub fn insert_modbus_aggregate(
     conn: &r2d2::PooledConnection<SqliteConnectionManager>,
     aggregate_info: AggregationInfo,
 ) -> Result<()> {
-    let period = format!("{:?}", aggregate_info.period);
+    let period = aggregate_info.period as u8;
 
     let start = aggregate_info
         .start_time

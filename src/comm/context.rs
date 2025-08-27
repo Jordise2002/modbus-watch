@@ -130,6 +130,10 @@ impl ModbusCommContext {
                 let value =
                     value_processing::registers_to_bytes(value_registers, &address_binding.config);
 
+                let value = value_processing::format_value(value, &address_binding.config.data_type).unwrap();
+
+                let value = value_processing::value_to_bytes(value);
+
                 let insert = InsertValueMessage {
                     name: address_binding.config.id.clone(),
                     timestamp: std::time::SystemTime::now(),

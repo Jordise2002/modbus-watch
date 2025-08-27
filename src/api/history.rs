@@ -5,7 +5,7 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
-use std::{sync::Arc, time::UNIX_EPOCH, u64};
+use std::{sync::Arc, time:: UNIX_EPOCH, u64};
 
 use crate::{
     aggregations::{AggregationInfo, Period},
@@ -41,7 +41,7 @@ pub async fn get_history(
     let end_date = if let Some(end_date) = params.end_date {
         UNIX_EPOCH + std::time::Duration::from_secs(end_date)
     } else {
-        UNIX_EPOCH + std::time::Duration::from_secs(u64::MAX)
+        UNIX_EPOCH + std::time::Duration::from_secs(i64::MAX as u64)
     };
 
     let max_group = params.max_group.unwrap_or(Period::Day);

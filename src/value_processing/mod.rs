@@ -124,12 +124,8 @@ pub fn registers_to_bytes(registers: Vec<ModbusDataType>, config: &PolledValue) 
 
 pub fn value_to_bytes(value: Value) -> Vec<u8> {
     match value {
-        Value::Integer(integer)  => {
-            integer.to_le_bytes().to_vec()
-        }
-        Value::FloatingPoint(floating) => {
-            floating.to_le_bytes().to_vec()
-        }
+        Value::Integer(integer) => integer.to_le_bytes().to_vec(),
+        Value::FloatingPoint(floating) => floating.to_le_bytes().to_vec(),
         Value::Boolean(boolean) => {
             vec![boolean as u8]
         }
@@ -148,8 +144,8 @@ pub fn format_value(raw_value: Vec<u8>, data_type: &DataType) -> Result<Value> {
 
             Ok(Value::Boolean(raw_value[0] != 0))
         }
-        DataType::Double => {
-            if raw_value.len() * 8 != data_type.min_bit_size() as usize {
+        DataType::Float | DataType::Double => {
+            if raw_value.len() != 8 as usize {
                 return Err(anyhow!("Double values must be 8 bytes long"));
             }
 
@@ -157,47 +153,45 @@ pub fn format_value(raw_value: Vec<u8>, data_type: &DataType) -> Result<Value> {
                 raw_value.try_into().unwrap(),
             )))
         }
-        DataType::Float =>  {
-            if raw_value.len() * 8 != data_type.min_bit_size() as usize {
-                return Err(anyhow!("Float values must be 4 bytes long"));
-            }
-
-            let float_value = f32::from_le_bytes(raw_value.try_into().unwrap());
-
-            Ok(Value::FloatingPoint(float_value as f64))
-        }
         DataType::Byte => {
-            let byte_value = u8::from_le_bytes(raw_value.try_into().unwrap());
+            let significant_bytes = &raw_value[..1];
+            let byte_value = u8::from_le_bytes(significant_bytes.try_into().unwrap());
 
             Ok(Value::Integer(byte_value as i128))
         }
         DataType::SignedInteger16 => {
-            let signed_16_value = i16::from_le_bytes(raw_value.try_into().unwrap());
+            let significant_bytes = &raw_value[..2];
+            let signed_16_value = i16::from_le_bytes(significant_bytes.try_into().unwrap());
 
             Ok(Value::Integer(signed_16_value as i128))
         }
-        DataType::SignedInteger32 =>{
-            let signed_32_value = i32::from_le_bytes(raw_value.try_into().unwrap());
+        DataType::SignedInteger32 => {
+            let significant_bytes = &raw_value[..4];
+            let signed_32_value = i32::from_le_bytes(significant_bytes.try_into().unwrap());
 
             Ok(Value::Integer(signed_32_value as i128))
         }
         DataType::SignedInteger64 => {
-            let signed_64_value = i64::from_le_bytes(raw_value.try_into().unwrap());
-            
+            let significant_bytes = &raw_value[..8];
+            let signed_64_value = i64::from_le_bytes(significant_bytes.try_into().unwrap());
+
             Ok(Value::Integer(signed_64_value as i128))
         }
         DataType::UnsignedInteger16 => {
-            let unsigned_16_value = u16::from_le_bytes(raw_value.try_into().unwrap());
+            let significant_bytes = &raw_value[..2];
+            let unsigned_16_value = u16::from_le_bytes(significant_bytes.try_into().unwrap());
 
             Ok(Value::Integer(unsigned_16_value as i128))
         }
         DataType::UnsignedInteger32 => {
-            let unsigned_32_value = u32::from_le_bytes(raw_value.try_into().unwrap());
+            let significant_bytes = &raw_value[..4];
+            let unsigned_32_value = u32::from_le_bytes(significant_bytes.try_into().unwrap());
 
             Ok(Value::Integer(unsigned_32_value as i128))
         }
         DataType::UnsignedInteger64 => {
-            let unsigned_64_value = u64::from_le_bytes(raw_value.try_into().unwrap());
+            let significant_bytes = &raw_value[..8];
+            let unsigned_64_value = u64::from_le_bytes(significant_bytes.try_into().unwrap());
 
             Ok(Value::Integer(unsigned_64_value as i128))
         }

@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum DataType {
@@ -35,7 +35,7 @@ impl DataType {
 pub enum Value {
     Integer(i128),
     FloatingPoint(f64),
-    Boolean(bool)
+    Boolean(bool),
 }
 
 //I have to repeat this enum in order to use the derivation of serde traits :(
@@ -57,11 +57,43 @@ impl ModbusTable {
         }
     }
 
-    pub fn register_size(&self) -> usize
-    {
+    pub fn register_size(&self) -> usize {
         match self {
             ModbusTable::Coils | ModbusTable::DiscreteInput => 1,
-            ModbusTable::HoldingRegisters | ModbusTable::InputRegisters => 16
+            ModbusTable::HoldingRegisters | ModbusTable::InputRegisters => 16,
         }
     }
+}
+
+fn default_starting_bit() -> u8 {
+    0
+}
+
+fn default_byte_swap() -> bool {
+    false
+}
+
+fn default_word_swap() -> bool {
+    false
+}
+
+fn default_double_word_swap() -> bool {
+    false
+}
+
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ValueFormattingParams {
+    #[serde(default = "default_starting_bit")]
+    pub starting_bit: u8,
+    pub bit_length: u16,
+
+    pub data_type: DataType,
+
+    #[serde(default = "default_byte_swap")]
+    pub byte_swap: bool,
+    #[serde(default = "default_word_swap")]
+    pub word_swap: bool,
+    #[serde(default = "default_double_word_swap")]
+    pub double_word_swap: bool,
 }

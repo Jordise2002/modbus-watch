@@ -137,7 +137,7 @@ impl ModbusCommContext {
                 }
 
                 let value =
-                    value_processing::registers_to_bytes(value_registers, &address_binding.config);
+                    value_processing::registers_to_bytes(value_registers, &address_binding.config.formatting_params);
 
                 info!(
                     "Value {} received poll {:?}",
@@ -248,7 +248,8 @@ impl ModbusCommContext {
                     slave_id: slave.id,
                 };
 
-                let ending_bit = address.starting_bit as u16 + address.bit_length;
+                let ending_bit = address.formatting_params.starting_bit as u16
+                    + address.formatting_params.bit_length;
 
                 let register_size = if address.table == crate::common::model::ModbusTable::Coils
                     || address.table == crate::common::model::ModbusTable::DiscreteInput
@@ -313,7 +314,8 @@ impl ModbusCommContext {
                     };
 
                 for value in values {
-                    let ending_bit = value.starting_bit as u16 + value.bit_length;
+                    let ending_bit = value.formatting_params.starting_bit as u16
+                        + value.formatting_params.bit_length;
 
                     let register_ammount = if ending_bit % register_size == 0 {
                         ending_bit / register_size

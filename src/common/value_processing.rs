@@ -1,5 +1,4 @@
-use crate::client::model::PolledValue;
-use crate::common::model::{DataType, ModbusTable, Value};
+use crate::common::model::{DataType, Value, ValueFormattingParams};
 
 use anyhow::{anyhow, Result};
 use tweakable_modbus::ModbusDataType;
@@ -103,7 +102,7 @@ fn apply_mask(data: &Vec<u8>, start_bit: usize, length: usize) -> Vec<u8> {
     result
 }
 
-pub fn registers_to_bytes(registers: Vec<ModbusDataType>, config: &PolledValue) -> Vec<u8> {
+pub fn registers_to_bytes(registers: Vec<ModbusDataType>, config: &ValueFormattingParams) -> Vec<u8> {
     let mut bytes = apply_endianness(
         &registers,
         config.byte_swap,
@@ -111,7 +110,7 @@ pub fn registers_to_bytes(registers: Vec<ModbusDataType>, config: &PolledValue) 
         config.double_word_swap,
     );
 
-    if config.table == ModbusTable::InputRegisters || config.table == ModbusTable::HoldingRegisters
+    if config.data_type != DataType::Boolean
     {
         bytes = apply_mask(
             &bytes,

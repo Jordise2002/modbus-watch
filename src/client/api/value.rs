@@ -1,5 +1,5 @@
-use crate::common::model::DataType;
 use crate::client::{api::ApiState, data::ModbusPoll};
+use crate::common::model::DataType;
 
 use axum::{
     extract::{Path, State},
@@ -17,20 +17,19 @@ pub async fn get_value(
     let mut found = false;
     let mut data_type = DataType::Boolean;
 
-    'search_loop: for connection in &state.config
-    {
+    'search_loop: for connection in &state.config {
         for slave in &connection.slaves {
             for value in &slave.values {
                 if value.id == id {
                     found = true;
-                    data_type = value.data_type.clone();
-                    break 'search_loop;  
+                    data_type = value.formatting_params.data_type.clone();
+                    break 'search_loop;
                 }
             }
         }
     }
 
-    if ! found {
+    if !found {
         return Err((StatusCode::NOT_FOUND, "Value was not configured").into_response());
     }
 

@@ -10,7 +10,7 @@ use std::{sync::Arc, time::UNIX_EPOCH, u64};
 use crate::client::{
     aggregations::{AggregationInfo, Period},
     api::ApiState,
-    data::ModbusPoll
+    data::ModbusPoll,
 };
 
 use crate::common::model::DataType;
@@ -58,7 +58,7 @@ pub async fn get_history(
             for value in &slave.values {
                 if value.id == value_id {
                     found = true;
-                    data_type = value.data_type.clone();
+                    data_type = value.formatting_params.data_type.clone();
                     break 'search_loop;
                 }
             }

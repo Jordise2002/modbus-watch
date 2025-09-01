@@ -314,7 +314,7 @@ pub async fn start_aggregation_building(
                         value.max_minute_aggregations_to_keep,
                         value.max_hour_aggregations_to_keep,
                         value.max_day_aggregations_to_keep,
-                        value.data_type.clone(),
+                        value.formatting_params.data_type.clone(),
                     ),
                 );
             }

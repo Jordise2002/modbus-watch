@@ -7,7 +7,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::{sync::Arc, time::UNIX_EPOCH, u64};
 
-use crate::{
+use crate::client::{
     aggregations::{AggregationInfo, Period},
     api::ApiState,
     data::ModbusPoll,
@@ -74,7 +74,7 @@ pub async fn get_history(
 
     let mut result = vec![];
 
-    let aggregations = crate::data::read::get_aggregates_between(
+    let aggregations = crate::client::data::read::get_aggregates_between(
         &conn, &value_id, &data_type, start_date, end_date, max_group, min_group,
     )
     .or_else(|_| Err((StatusCode::INTERNAL_SERVER_ERROR, "Access to db failed").into_response()))?;
@@ -84,7 +84,7 @@ pub async fn get_history(
     }
 
     if min_group == Period::NoGrouping {
-        let polls = crate::data::read::get_polls_between(
+        let polls = crate::client::data::read::get_polls_between(
             &conn, &value_id, &data_type, start_date, end_date,
         )
         .or_else(|_| {

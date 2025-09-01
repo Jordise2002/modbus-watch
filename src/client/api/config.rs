@@ -1,5 +1,5 @@
-use crate::model::PolledValue;
-use crate::api::ApiState;
+use crate::client::model::PolledValue;
+use crate::client::api::ApiState;
 
 use axum::{extract::{Path, State}, http::StatusCode, response::{IntoResponse, Response}, Json};
 use std::sync::Arc;

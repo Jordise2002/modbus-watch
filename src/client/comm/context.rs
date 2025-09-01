@@ -7,9 +7,9 @@ use tokio::sync::Mutex;
 use tracing::{debug, info, info_span, warn, Instrument};
 use tweakable_modbus::{ModbusAddress, ModbusMasterConnection, ModbusResult, ModbusTable};
 
-use crate::data::InsertValueMessage;
-use crate::model::{PolledConnection, PolledValue};
-use crate::value_processing;
+use crate::client::data::InsertValueMessage;
+use crate::client::model::{PolledConnection, PolledValue};
+use crate::common::value_processing;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Query {
@@ -250,8 +250,8 @@ impl ModbusCommContext {
 
                 let ending_bit = address.starting_bit as u16 + address.bit_length;
 
-                let register_size = if address.table == crate::model::ModbusTable::Coils
-                    || address.table == crate::model::ModbusTable::DiscreteInput
+                let register_size = if address.table == crate::client::model::ModbusTable::Coils
+                    || address.table == crate::client::model::ModbusTable::DiscreteInput
                 {
                     1
                 } else {

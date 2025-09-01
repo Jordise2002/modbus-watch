@@ -1,20 +1,13 @@
 use clap::{Parser, ValueEnum};
 
-use comm::ModbusWatcher;
-use model::PolledConnection;
+use modbus_watch::client::comm::ModbusWatcher;
+use modbus_watch::client::model::PolledConnection;
 
 use std::io;
 use tokio::sync::mpsc;
 use tracing::{error, info, Level};
 use tracing_appender::rolling;
 use tracing_subscriber::{fmt, EnvFilter};
-
-mod comm;
-mod data;
-mod model;
-mod api;
-mod value_processing;
-mod aggregations;
 
 #[derive(Debug, Clone, ValueEnum, PartialEq)]
 enum LogLevel {
@@ -116,9 +109,9 @@ async fn main() {
         }
     }
 
-    let (tx, rx) = mpsc::channel::<data::InsertValueMessage>(1024);
+    let (tx, rx) = mpsc::channel::<modbus_watch::client::data::InsertValueMessage>(1024);
 
-    let mut db = data::DbManager::new(args.db_file, &config, rx).unwrap_or_else(|e| {
+    let mut db = modbus_watch::client::data::DbManager::new(args.db_file, &config, rx).unwrap_or_else(|e| {
         error!("Couldn't init db: {}", e);
         std::process::exit(1);
     });
@@ -137,9 +130,9 @@ async fn main() {
         std::process::exit(1);
     });
 
-    api::serve_api(config.clone(), api_db_access, args.api_port).await;
+    modbus_watch::client::api::serve_api(config.clone(), api_db_access, args.api_port).await;
 
-    aggregations::start_aggregation_building(aggregation_db_access, config).await;
+    modbus_watch::client::aggregations::start_aggregation_building(aggregation_db_access, config).await;
 
     tokio::signal::ctrl_c().await.unwrap();
 

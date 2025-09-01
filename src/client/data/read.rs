@@ -1,9 +1,9 @@
 use std::time::UNIX_EPOCH;
 
-use crate::aggregations::{Aggregation, AggregationInfo, Period};
-use crate::data::ModbusPoll;
-use crate::model::{DataType};
-use crate::value_processing;
+use crate::client::aggregations::{Aggregation, AggregationInfo, Period};
+use crate::client::data::ModbusPoll;
+use crate::client::model::{DataType};
+use crate::common::value_processing;
 
 use anyhow::Result;
 use r2d2_sqlite::SqliteConnectionManager;

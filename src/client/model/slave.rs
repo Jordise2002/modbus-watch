@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::model::value::PolledValue;
+use crate::client::model::value::PolledValue;
 
 fn default_slave_id() -> u8 {
     1

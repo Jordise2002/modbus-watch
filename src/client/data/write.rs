@@ -1,8 +1,9 @@
-use crate::{
+use crate::client::{
     aggregations::{AggregationInfo, Period},
     model::PolledValue,
-    value_processing,
 };
+
+use crate::common::value_processing;
 
 use anyhow::Result;
 use r2d2_sqlite::SqliteConnectionManager;

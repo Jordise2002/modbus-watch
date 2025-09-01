@@ -1,6 +1,6 @@
 use tokio::sync::mpsc::Sender;
 
-use crate::{comm::context::ModbusCommContext, data::InsertValueMessage, model::PolledConnection};
+use crate::client::{comm::context::ModbusCommContext, data::InsertValueMessage, model::PolledConnection};
 
 use anyhow::Result;
 

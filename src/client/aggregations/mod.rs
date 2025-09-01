@@ -5,9 +5,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use anyhow::{anyhow, Result};
 
-use crate::data;
-use crate::data::read::get_polls_between;
-use crate::model::{DataType, PolledConnection, Value};
+use crate::client::data;
+use crate::client::data::read::get_polls_between;
+use crate::client::model::{DataType, PolledConnection, Value};
 
 mod build_aggregates;
 
@@ -91,13 +91,13 @@ fn delete_excess_aggregates(
     conn: r2d2::PooledConnection<SqliteConnectionManager>,
 ) {
     if let Some(max_polls) = info.max_polls {
-        if let Err(err) = crate::data::write::delete_exceeding_polls(&conn, id.clone(), max_polls) {
+        if let Err(err) = crate::client::data::write::delete_exceeding_polls(&conn, id.clone(), max_polls) {
             tracing::error!("Error deleting exceeding polls: {}", err);
         }
     }
 
     if let Some(max_aggregations) = info.max_min_aggregations {
-        if let Err(err) = crate::data::write::delete_exceeding_aggregations(
+        if let Err(err) = crate::client::data::write::delete_exceeding_aggregations(
             &conn,
             id.clone(),
             Period::Minute,
@@ -108,7 +108,7 @@ fn delete_excess_aggregates(
     }
 
     if let Some(max_aggregations) = info.max_hour_aggregations {
-        if let Err(err) = crate::data::write::delete_exceeding_aggregations(
+        if let Err(err) = crate::client::data::write::delete_exceeding_aggregations(
             &conn,
             id.clone(),
             Period::Hour,
@@ -119,7 +119,7 @@ fn delete_excess_aggregates(
     }
 
     if let Some(max_aggregations) = info.max_day_aggregations {
-        if let Err(err) = crate::data::write::delete_exceeding_aggregations(
+        if let Err(err) = crate::client::data::write::delete_exceeding_aggregations(
             &conn,
             id.clone(),
             Period::Day,

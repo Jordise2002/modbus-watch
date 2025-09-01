@@ -3,6 +3,17 @@ name = "modbus-watch"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name ="master"
+path = "src/master.rs"
+
+[[bin]]
+name = "server"
+path = "src/server.rs"
+
 [dependencies]
 #Modbus
 tweakable-modbus = { git = "https://github.com/Jordise2002/tweakable-modbus" }

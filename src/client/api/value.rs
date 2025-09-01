@@ -1,5 +1,5 @@
-use crate::model::DataType;
-use crate::{api::ApiState, data::ModbusPoll};
+use crate::client::model::DataType;
+use crate::client::{api::ApiState, data::ModbusPoll};
 
 use axum::{
     extract::{Path, State},
@@ -38,7 +38,7 @@ pub async fn get_value(
         Err((StatusCode::INTERNAL_SERVER_ERROR, "Access to db failed").into_response())
     })?;
 
-    let poll = crate::data::read::get_last_poll(&db_conn, id, data_type);
+    let poll = crate::client::data::read::get_last_poll(&db_conn, id, data_type);
 
     if let Ok(poll) = poll {
         Ok(Json(poll))

@@ -3,7 +3,7 @@ use r2d2_sqlite::SqliteConnectionManager;
 use r2d2::Pool;
 use std::net::SocketAddr;
 
-use crate::model::PolledConnection;
+use crate::client::model::PolledConnection;
 use std::sync::Arc;
 
 mod config;

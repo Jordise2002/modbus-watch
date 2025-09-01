@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, net::IpAddr, str::FromStr, time::Duration};
 
-use crate::model::slave::PolledSlave;
+use crate::client::model::slave::PolledSlave;
 
 fn default_port() -> u16 {
     502

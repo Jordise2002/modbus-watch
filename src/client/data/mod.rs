@@ -8,8 +8,8 @@ use tracing::error;
 use tracing::instrument;
 use serde::{Serialize, Deserialize};
 
-use crate::model::PolledConnection;
-use crate::model::Value;
+use crate::client::model::PolledConnection;
+use crate::client::model::Value;
 
 pub mod read;
 pub mod write;

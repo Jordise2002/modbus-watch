@@ -2,7 +2,7 @@ use std::time::UNIX_EPOCH;
 
 use crate::client::aggregations::{Aggregation, AggregationInfo, Period};
 use crate::client::data::ModbusPoll;
-use crate::client::model::{DataType};
+use crate::common::model::DataType;
 use crate::common::value_processing;
 
 use anyhow::Result;

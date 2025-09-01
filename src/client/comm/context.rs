@@ -250,8 +250,8 @@ impl ModbusCommContext {
 
                 let ending_bit = address.starting_bit as u16 + address.bit_length;
 
-                let register_size = if address.table == crate::client::model::ModbusTable::Coils
-                    || address.table == crate::client::model::ModbusTable::DiscreteInput
+                let register_size = if address.table == crate::common::model::ModbusTable::Coils
+                    || address.table == crate::common::model::ModbusTable::DiscreteInput
                 {
                     1
                 } else {

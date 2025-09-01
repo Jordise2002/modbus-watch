@@ -10,9 +10,10 @@ use std::{sync::Arc, time::UNIX_EPOCH, u64};
 use crate::client::{
     aggregations::{AggregationInfo, Period},
     api::ApiState,
-    data::ModbusPoll,
-    model::DataType,
+    data::ModbusPoll
 };
+
+use crate::common::model::DataType;
 
 #[derive(Debug, Deserialize)]
 pub struct HistoryParams {

@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::client::model::{DataType, ModbusTable};
+use crate::common::model::{DataType, ModbusTable};
 
 const MAX_VALUE_BIT_LENGTH: u16 = 64;
 

@@ -1,4 +1,4 @@
-use crate::client::model::DataType;
+use crate::common::model::DataType;
 use crate::client::{api::ApiState, data::ModbusPoll};
 
 use axum::{

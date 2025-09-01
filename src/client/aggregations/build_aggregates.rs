@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use crate::client::{aggregations::Aggregation, model::Value};
+use crate::client::{aggregations::Aggregation};
+use crate::common::model::Value;
 
 pub fn build_integer_aggregates(mut values: Vec<i128>) -> Aggregation {
     let sum: i128 = values.iter().copied().sum();

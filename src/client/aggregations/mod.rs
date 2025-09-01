@@ -7,7 +7,8 @@ use anyhow::{anyhow, Result};
 
 use crate::client::data;
 use crate::client::data::read::get_polls_between;
-use crate::client::model::{DataType, PolledConnection, Value};
+use crate::client::model::PolledConnection;
+use crate::common::model::{DataType, Value};
 
 mod build_aggregates;
 

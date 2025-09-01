@@ -1,4 +1,5 @@
-use crate::client::model::{DataType, ModbusTable, PolledValue, Value};
+use crate::client::model::PolledValue;
+use crate::common::model::{DataType, ModbusTable, Value};
 
 use anyhow::{anyhow, Result};
 use tweakable_modbus::ModbusDataType;

@@ -9,7 +9,7 @@ use tracing::instrument;
 use serde::{Serialize, Deserialize};
 
 use crate::client::model::PolledConnection;
-use crate::client::model::Value;
+use crate::common::model::Value;
 
 pub mod read;
 pub mod write;

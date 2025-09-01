@@ -11,8 +11,8 @@ name ="master"
 path = "src/master.rs"
 
 [[bin]]
-name = "server"
-path = "src/server.rs"
+name = "slave"
+path = "src/slave.rs"
 
 [dependencies]
 #Modbus

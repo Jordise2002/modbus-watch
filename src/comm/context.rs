@@ -108,6 +108,15 @@ impl ModbusCommContext {
                         break;
                     }
 
+                    let result = results.get(&address_pointer).unwrap();
+
+                    if let ModbusResult::Error(exception_code) = result {
+                        warn!(
+                            "Exception code {:?} was received when querying for value {}",
+                            exception_code, address_binding.config.id
+                        );
+                    }
+
                     if let ModbusResult::ReadResult(value) = results.get(&address_pointer).unwrap()
                     {
                         value_registers.push(value.clone());

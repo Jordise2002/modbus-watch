@@ -1,11 +1,11 @@
-use clap::{Parser, ValueEnum};
+use clap::{Parser};
 
 use modbus_watch::client::comm::ModbusWatcher;
 use modbus_watch::client::model::PolledConnection;
 use modbus_watch::common::logging::{init_logger, LogLevel};
 
 use tokio::sync::mpsc;
-use tracing::{error, info, Level};
+use tracing::{error, info};
 
 #[derive(Parser, Debug)]
 struct Args {

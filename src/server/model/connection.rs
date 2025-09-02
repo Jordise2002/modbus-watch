@@ -1,29 +1,24 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashSet, net::IpAddr, str::FromStr, time::Duration};
+use std::collections::HashSet;
 
-use crate::client::model::slave::PolledSlave;
+use crate::server::model::slave::ServedSlave;
 
 fn default_port() -> u16 {
     502
 }
 
-fn default_ip() -> IpAddr {
-    IpAddr::from_str("127.0.0.1").unwrap()
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct PolledConnection {
-    #[serde(default, flatten)]
-    pub config: PolledConnectionConfig,
-    #[serde(default = "default_ip")]
-    pub ip: IpAddr,
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct ServedConnection {
     #[serde(default = "default_port")]
     pub port: u16,
-    pub slaves: Vec<PolledSlave>,
+
+    #[serde(flatten)]
+    pub config: ServedConnectionConfig,
+    pub slaves: Vec<ServedSlave>
 }
 
-impl PolledConnection {
+impl ServedConnection {
     pub fn validate(&self) -> Result<()> {
         let mut error_string = String::new();
 
@@ -56,18 +51,12 @@ impl PolledConnection {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct PolledConnectionConfig {
-    pub max_simultaneous_connections: u32,
-    #[serde(with = "humantime_serde")]
-    pub max_response_time: Duration,
+fn default_connection_time_to_live() -> std::time::Duration {
+    std::time::Duration::from_secs(3)
 }
 
-impl Default for PolledConnectionConfig {
-    fn default() -> Self {
-        PolledConnectionConfig {
-            max_simultaneous_connections: 1,
-            max_response_time: Duration::from_secs(1),
-        }
-    }
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct ServedConnectionConfig {
+    #[serde(default = "default_connection_time_to_live")]
+    pub connection_time_to_live: std::time::Duration,
 }

@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -81,6 +82,7 @@ fn default_double_word_swap() -> bool {
     false
 }
 
+const MAX_VALUE_BIT_LENGTH: u16 = 64;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ValueFormattingParams {
@@ -96,4 +98,49 @@ pub struct ValueFormattingParams {
     pub word_swap: bool,
     #[serde(default = "default_double_word_swap")]
     pub double_word_swap: bool,
+}
+
+impl ValueFormattingParams {
+    pub fn validate(&self, table: ModbusTable) -> Result<()> {
+        if self.data_type != DataType::Boolean
+            && (table == ModbusTable::Coils || table == ModbusTable::DiscreteInput)
+        {
+            return Err(anyhow!(
+                "Coils and DiscreteInput tables only support Boolean data types"
+            ));
+        }
+
+        if (table == ModbusTable::Coils || table == ModbusTable::DiscreteInput)
+            && self.starting_bit != 0
+        {
+            return Err(anyhow!("Coils and DiscreteInput tables have a maximum register size of 0, starting bit {} was provided!", self.starting_bit));
+        }
+
+        if (table == ModbusTable::Coils || table == ModbusTable::DiscreteInput)
+            && self.bit_length != 1
+        {
+            return Err(anyhow!(
+                "Coils and DiscreteInput tables have a maximum bit length of 1, {} was provided",
+                self.bit_length
+            ));
+        }
+
+        if self.bit_length < self.data_type.min_bit_size() {
+            return Err(anyhow!(
+                "Minimum byte size for {:?} is {}",
+                self.data_type,
+                self.data_type.min_bit_size()
+            ));
+        }
+
+        if self.bit_length > MAX_VALUE_BIT_LENGTH {
+            return Err(anyhow!(
+                "Bit length ({}) is too high, maximum length is {}",
+                self.bit_length,
+                MAX_VALUE_BIT_LENGTH
+            ));
+        }
+
+        Ok(())
+    }
 }

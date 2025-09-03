@@ -132,6 +132,11 @@ pub fn value_to_bytes(value: Value) -> Vec<u8> {
     }
 }
 
+pub fn value_to_registers(value: Value, config: &ValueFormattingParams) -> Vec<ModbusDataType>
+{
+    vec![]
+}
+
 pub fn format_value(raw_value: Vec<u8>, data_type: &DataType) -> Result<Value> {
     if raw_value.is_empty() {
         return Err(anyhow!("Value is empty"));

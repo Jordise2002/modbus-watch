@@ -3,6 +3,7 @@ use tracing::error;
 
 use modbus_watch::common::logging::{init_logger, LogLevel};
 use modbus_watch::server::model::ServedConnection;
+use modbus_watch::server::state;
 
 #[derive(Parser)]
 struct Args {
@@ -38,4 +39,8 @@ fn main() {
             std::process::exit(1);
         }
     }
+
+    let app_state = state::build_app_state(&config);
+
+    
 }

@@ -1,4 +1,5 @@
 use clap::Parser;
+use modbus_watch::server::comm::ModbusServer;
 use tracing::error;
 
 use modbus_watch::common::logging::{init_logger, LogLevel};
@@ -41,6 +42,10 @@ fn main() {
     }
 
     let app_state = state::build_app_state(&config);
+
+    let modbus_server = ModbusServer::new(&config, app_state.clone());
+
+    modbus_server.serve();
 
     
 }

@@ -1,7 +1,11 @@
+use std::net::IpAddr;
 use std::sync::Arc;
 use std::{collections::HashMap, net::SocketAddr};
-use tweakable_modbus::{ExceptionCode, ModbusAddress, ModbusDataType};
+use tweakable_modbus::{
+    ExceptionCode, ModbusAddress, ModbusDataType, ModbusSlaveConnectionParameters,
+};
 
+use crate::server::model::connection::ServedConnectionConfig;
 use crate::{
     common::model::{ModbusTable, ValueFormattingParams},
     server::{model::ServedConnection, state::AppState},
@@ -10,13 +14,14 @@ use crate::{
 type AddressBindings = HashMap<ModbusAddress, String>;
 
 pub struct ModbusSlaveCommContext {
-    pub address: SocketAddr,
-    pub bindings: AddressBindings,
-    pub app_state: AppState,
+    address: SocketAddr,
+    bindings: AddressBindings,
+    app_state: AppState,
+    config: ServedConnectionConfig,
 }
 
 impl ModbusSlaveCommContext {
-    pub fn new(config: &ServedConnection, app_state: AppState, address: SocketAddr) -> Arc<Self> {
+    pub fn new(config: &ServedConnection, app_state: AppState) -> Arc<Self> {
         let mut bindings = AddressBindings::new();
         for slave in &config.slaves {
             for value in &slave.values {
@@ -33,10 +38,13 @@ impl ModbusSlaveCommContext {
             }
         }
 
+        let address = SocketAddr::new(IpAddr::from([0, 0, 0, 0]), config.port);
+
         Arc::new(ModbusSlaveCommContext {
             address,
             bindings,
             app_state,
+            config: config.config.clone(),
         })
     }
 
@@ -89,7 +97,7 @@ impl ModbusSlaveCommContext {
         Ok(())
     }
 
-    pub async fn serve(arc: Arc<Self>) {
+    pub fn serve(arc: Arc<Self>) {
         let arc_read = arc.clone();
 
         let on_read = Box::new(move |address: ModbusAddress| arc_read.on_read(address));
@@ -103,7 +111,13 @@ impl ModbusSlaveCommContext {
         let mut slave =
             tweakable_modbus::ModbusSlaveConnection::new_tcp(arc.address, on_read, on_write);
 
-        slave.serve().await.unwrap();
+        let params = ModbusSlaveConnectionParameters {
+            connection_time_to_live: arc.config.connection_time_to_live,
+            allowed_slaves: Arc::new(None),
+            allowed_ip_address: None,
+        };
+
+        tokio::spawn(async move { slave.server_with_parameters(params).await.unwrap() });
     }
 }
 

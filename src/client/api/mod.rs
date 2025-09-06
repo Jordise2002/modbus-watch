@@ -29,7 +29,7 @@ pub async fn serve_api(config: Vec<PolledConnection>, db: Arc<Pool<SqliteConnect
 
     let api = Router::new().nest("/api/v1", api_v1);
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
 
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
 

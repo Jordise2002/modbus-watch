@@ -38,6 +38,10 @@ impl ValueState {
         self.registers.clone()
     }
 
+    pub fn set_all_registers(&mut self, new_registers: Vec<ModbusDataType>) {
+        self.registers = new_registers;
+    }
+
     pub fn get_register(&self, address: ModbusAddress) -> Option<ModbusDataType> {
         if address.address < self.starting_address.address {
             return None;

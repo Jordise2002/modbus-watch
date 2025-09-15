@@ -29,6 +29,25 @@ impl DataType {
             _ => 1,
         }
     }
+
+    pub fn byte_size(&self) -> usize {
+        match self {
+            DataType::Boolean => 1,
+            DataType::Byte => 1,
+            
+            DataType::SignedInteger16 => 2,
+            DataType::UnsignedInteger16 => 2,
+            
+            DataType::SignedInteger32 => 4,
+            DataType::UnsignedInteger32 => 4,
+
+            DataType::SignedInteger64 => 8,
+            DataType::UnsignedInteger64 => 8,
+
+            DataType::Float => 4,
+            DataType::Double => 8
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]

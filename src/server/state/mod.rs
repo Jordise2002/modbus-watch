@@ -25,7 +25,7 @@ impl ValueState {
         default_value: Value,
         formatting_params: ValueFormattingParams,
     ) -> Self {
-        let registers = value_processing::value_to_registers(default_value, &formatting_params);
+        let registers = value_processing::value_to_registers(default_value, &formatting_params).unwrap();
 
         ValueState {
             starting_address,

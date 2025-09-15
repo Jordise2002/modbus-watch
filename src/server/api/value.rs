@@ -56,7 +56,7 @@ pub async fn set_value(State(state): State<AppState>, Path(id): Path<String>, Js
 
     let value_ref = state.get_mut(&id).unwrap();
 
-    let value_registers = value_processing::value_to_registers(value, &value_ref.formatting_params);
+    let value_registers = value_processing::value_to_registers(value, &value_ref.formatting_params).unwrap();
 
     value_ref.set_all_registers(value_registers);
 

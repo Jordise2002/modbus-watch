@@ -3,14 +3,10 @@ use crate::common::model::{DataType, Value, ValueFormattingParams};
 use anyhow::{anyhow, Result};
 use tweakable_modbus::ModbusDataType;
 
-fn apply_endianness(
-    registers: &Vec<ModbusDataType>,
-    byte_swap: bool,
-    word_swap: bool,
-    double_word_swap: bool,
-) -> Vec<u8> {
+fn extract_bytes_from_registers(registers: &Vec<ModbusDataType>) -> Vec<u8> {
     let mut result = vec![];
     //All registers must be of the same type
+
     if let ModbusDataType::Coil(_) = registers.first().unwrap() {
         for register in registers {
             if let ModbusDataType::Coil(coil) = *register {
@@ -24,7 +20,27 @@ fn apply_endianness(
             }
         }
     }
+    result
+}
 
+fn build_registers_from_bytes(mut bytes: Vec<u8>) -> Vec<ModbusDataType> {
+    if !bytes.len() % 2 == 0 {
+        bytes.push(0);
+    }
+
+    bytes
+        .chunks_exact(2)
+        .map(|chunk| ModbusDataType::Register(u16::from_le_bytes([chunk[0], chunk[1]])))
+        .collect()
+}
+
+fn apply_endianness(
+    bytes: &Vec<u8>,
+    byte_swap: bool,
+    word_swap: bool,
+    double_word_swap: bool,
+) -> Vec<u8> {
+    let mut result = bytes.clone();
     // Byte swap: intercambia cada par de bytes
     if byte_swap {
         let mut swapped = vec![];
@@ -68,10 +84,15 @@ fn apply_endianness(
     result
 }
 
-fn apply_mask(data: &Vec<u8>, start_bit: usize, length: usize) -> Vec<u8> {
+fn apply_mask(mut data: Vec<u8>, start_bit: usize, length: usize) -> Vec<u8> {
     let mut result = vec![];
     let mut current_byte = 0u8;
     let mut bit_pos = 0;
+
+    while data.len() * 8 < length
+    {
+        data.push(0);
+    } 
 
     for i in 0..length {
         let absolute_bit = start_bit + i;
@@ -102,18 +123,22 @@ fn apply_mask(data: &Vec<u8>, start_bit: usize, length: usize) -> Vec<u8> {
     result
 }
 
-pub fn registers_to_bytes(registers: Vec<ModbusDataType>, config: &ValueFormattingParams) -> Vec<u8> {
+pub fn registers_to_bytes(
+    registers: Vec<ModbusDataType>,
+    config: &ValueFormattingParams,
+) -> Vec<u8> {
+    let bytes = extract_bytes_from_registers(&registers);
+
     let mut bytes = apply_endianness(
-        &registers,
+        &bytes,
         config.byte_swap,
         config.word_swap,
         config.double_word_swap,
     );
 
-    if config.data_type != DataType::Boolean
-    {
+    if config.data_type != DataType::Boolean {
         bytes = apply_mask(
-            &bytes,
+            bytes,
             config.starting_bit as usize,
             config.bit_length as usize,
         );
@@ -132,9 +157,68 @@ pub fn value_to_bytes(value: Value) -> Vec<u8> {
     }
 }
 
-pub fn value_to_registers(value: Value, config: &ValueFormattingParams) -> Vec<ModbusDataType>
-{
-    vec![]
+pub fn value_to_registers(
+    value: Value,
+    config: &ValueFormattingParams,
+) -> Result<Vec<ModbusDataType>> {
+    let mut result = vec![];
+    match config.data_type {
+        DataType::Boolean => {
+            if let Value::Boolean(value) = value {
+                result.push(ModbusDataType::Coil(value));
+            } else {
+                return Err(anyhow!("Expected boolean value but found otherwise"));
+            }
+        }
+        DataType::Double => {
+            if let Value::FloatingPoint(value) = value {
+                let bytes = value.to_le_bytes().to_vec();
+                let bytes = apply_endianness(
+                    &bytes,
+                    config.byte_swap,
+                    config.word_swap,
+                    config.double_word_swap,
+                );
+                result = build_registers_from_bytes(bytes);
+            }
+            else {
+                return Err(anyhow!("Expected floating point value but found otherwise"));
+            }
+        }
+        DataType::Float => {
+            if let Value::FloatingPoint(value) = value {
+                let value = value as f32;
+                let bytes = value.to_le_bytes().to_vec();
+                let bytes = apply_endianness(
+                    &bytes,
+                    config.byte_swap,
+                    config.word_swap,
+                    config.double_word_swap,
+                );
+                result = build_registers_from_bytes(bytes);
+            }
+            else {
+                return Err(anyhow!("Expected floating point value but found otherwise"));
+            }
+        }
+        _ => {
+            if let Value::Integer(value) = value {
+                let value = value.to_le_bytes().to_vec();
+                let value = value[..config.data_type.byte_size()].to_vec();
+
+                let value = apply_endianness(&value, config.byte_swap, config.word_swap, config.double_word_swap);
+
+                let value = apply_mask(value, config.starting_bit as usize, config.bit_length as usize);
+
+                result = build_registers_from_bytes(value)
+            }
+            else {
+                return Err(anyhow!("Expected integer value but found otherwise"));
+            }
+        }
+    }
+
+    return Ok(result);
 }
 
 pub fn format_value(raw_value: Vec<u8>, data_type: &DataType) -> Result<Value> {

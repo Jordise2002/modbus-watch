@@ -106,55 +106,6 @@ impl ModbusSlaveCommContext {
         })
     }
 
-    async fn on_read(
-        &self,
-        address: ModbusAddress,
-    ) -> std::result::Result<ModbusDataType, ExceptionCode> {
-        if !self.bindings.contains_key(&address) {
-            return Err(ExceptionCode::IllegalDataAddress);
-        }
-
-        let value_id = self.bindings.get(&address).unwrap();
-
-        let app_state_ref = self.app_state.lock().await;
-
-        if !app_state_ref.contains_key(value_id) {
-            return Err(ExceptionCode::ServerDeviceFailure);
-        }
-
-        let value_binding = app_state_ref.get(value_id).unwrap();
-
-        if let Some(value) = value_binding.get_register(address) {
-            Ok(value)
-        } else {
-            Err(ExceptionCode::ServerDeviceFailure)
-        }
-    }
-
-    async fn on_write(
-        &self,
-        address: ModbusAddress,
-        value: ModbusDataType,
-    ) -> std::result::Result<(), ExceptionCode> {
-        if !self.bindings.contains_key(&address) {
-            return Err(ExceptionCode::IllegalDataAddress);
-        }
-
-        let value_id = self.bindings.get(&address).unwrap();
-
-        let mut app_state_ref = self.app_state.lock().await;
-
-        if !app_state_ref.contains_key(value_id) {
-            return Err(ExceptionCode::ServerDeviceFailure);
-        }
-
-        let value_binding = app_state_ref.get_mut(value_id).unwrap();
-
-        value_binding.set_register(address, value);
-
-        Ok(())
-    }
-
     pub fn serve(arc: Arc<Self>) {
         let callback = Box::new(ModbusSlaveCallback::new(arc.app_state.clone(), arc.bindings.clone()));
 

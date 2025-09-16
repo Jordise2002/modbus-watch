@@ -1,4 +1,5 @@
 use std::net::IpAddr;
+use std::ops::Add;
 use std::sync::Arc;
 use std::{collections::HashMap, net::SocketAddr};
 use tweakable_modbus::{
@@ -13,6 +14,64 @@ use crate::{
 
 type AddressBindings = HashMap<ModbusAddress, String>;
 
+struct ModbusSlaveCallback {
+    app_state: AppState,
+    bindings: AddressBindings
+}
+
+impl ModbusSlaveCallback {
+    pub fn new(app_state: AppState, bindings: AddressBindings) -> Self {
+        Self {app_state, bindings}
+    }
+}
+
+#[async_trait::async_trait]
+#[allow(dead_code)]
+impl tweakable_modbus::ModbusCallBack for ModbusSlaveCallback {
+    async fn on_read(&self, address: ModbusAddress) -> Result<ModbusDataType, ExceptionCode>
+    {
+        if !self.bindings.contains_key(&address) {
+            return Err(ExceptionCode::IllegalDataAddress);
+        }
+
+        let value_id = self.bindings.get(&address).unwrap();
+
+        let app_state_ref = self.app_state.lock().await;
+
+        if !app_state_ref.contains_key(value_id) {
+            return Err(ExceptionCode::ServerDeviceFailure);
+        }
+
+        let value_binding = app_state_ref.get(value_id).unwrap();
+
+        if let Some(value) = value_binding.get_register(address) {
+            Ok(value)
+        } else {
+            Err(ExceptionCode::ServerDeviceFailure)
+        }
+    }
+
+    async fn on_write(&self, address: ModbusAddress, value: ModbusDataType) -> Result<(), ExceptionCode> {
+        if !self.bindings.contains_key(&address) {
+            return Err(ExceptionCode::IllegalDataAddress);
+        }
+
+        let value_id = self.bindings.get(&address).unwrap();
+
+        let mut app_state_ref = self.app_state.lock().await;
+
+        if !app_state_ref.contains_key(value_id) {
+            return Err(ExceptionCode::ServerDeviceFailure);
+        }
+
+        let value_binding = app_state_ref.get_mut(value_id).unwrap();
+
+        value_binding.set_register(address, value);
+
+        Ok(())
+    }
+
+}
 pub struct ModbusSlaveCommContext {
     address: SocketAddr,
     bindings: AddressBindings,
@@ -48,7 +107,7 @@ impl ModbusSlaveCommContext {
         })
     }
 
-    fn on_read(
+    async fn on_read(
         &self,
         address: ModbusAddress,
     ) -> std::result::Result<ModbusDataType, ExceptionCode> {
@@ -58,7 +117,7 @@ impl ModbusSlaveCommContext {
 
         let value_id = self.bindings.get(&address).unwrap();
 
-        let app_state_ref = self.app_state.blocking_lock();
+        let app_state_ref = self.app_state.lock().await;
 
         if !app_state_ref.contains_key(value_id) {
             return Err(ExceptionCode::ServerDeviceFailure);
@@ -73,7 +132,7 @@ impl ModbusSlaveCommContext {
         }
     }
 
-    fn on_write(
+    async fn on_write(
         &self,
         address: ModbusAddress,
         value: ModbusDataType,
@@ -84,7 +143,7 @@ impl ModbusSlaveCommContext {
 
         let value_id = self.bindings.get(&address).unwrap();
 
-        let mut app_state_ref = self.app_state.blocking_lock();
+        let mut app_state_ref = self.app_state.lock().await;
 
         if !app_state_ref.contains_key(value_id) {
             return Err(ExceptionCode::ServerDeviceFailure);
@@ -98,18 +157,10 @@ impl ModbusSlaveCommContext {
     }
 
     pub fn serve(arc: Arc<Self>) {
-        let arc_read = arc.clone();
-
-        let on_read = Box::new(move |address: ModbusAddress| arc_read.on_read(address));
-
-        let arc_write = arc.clone();
-
-        let on_write = Box::new(move |address: ModbusAddress, value: ModbusDataType| {
-            arc_write.on_write(address, value)
-        });
+        let callback = Box::new(ModbusSlaveCallback::new(arc.app_state.clone(), arc.bindings.clone()));
 
         let mut slave =
-            tweakable_modbus::ModbusSlaveConnection::new_tcp(arc.address, on_read, on_write);
+            tweakable_modbus::ModbusSlaveConnection::new_tcp(arc.address, callback);
 
         let params = ModbusSlaveConnectionParameters {
             connection_time_to_live: arc.config.connection_time_to_live,

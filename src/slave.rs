@@ -1,4 +1,5 @@
 use clap::Parser;
+use modbus_watch::server::api::serve_api;
 use modbus_watch::server::comm::ModbusServer;
 use tracing::error;
 
@@ -13,8 +14,12 @@ struct Args {
     log_level: LogLevel,
     #[arg(long = "log-file", default_value = "")]
     log_file: String,
+    #[arg(long="port", default_value="8080")]
+    port: u16
 }
-fn main() {
+
+#[tokio::main]
+async fn main() {
     let args = Args::parse();
 
     //We must keep the worker guard alive
@@ -43,9 +48,13 @@ fn main() {
 
     let app_state = state::build_app_state(&config);
 
+    serve_api(app_state.clone(), args.port).await;
+
     let modbus_server = ModbusServer::new(&config, app_state.clone());
 
     modbus_server.serve();
 
-    
+    tokio::signal::ctrl_c().await.unwrap();
+
+    std::process::exit(0);
 }

@@ -123,6 +123,32 @@ fn apply_mask(mut data: Vec<u8>, start_bit: usize, length: usize) -> Vec<u8> {
     result
 }
 
+fn move_to_mask_position(data: Vec<u8>, start_bit: usize, length: usize)  -> Vec<u8> {
+    let mut result = vec![];
+
+    let full_bytes_to_append = start_bit / 8;
+
+    for i in 0..full_bytes_to_append {
+        result.push(0);
+    }
+
+    let mut aux_byte = 0;
+    let bit_index = start_bit % 8;
+
+    for i in 0..length {
+        let bit = (data[i / 8] >> i % 8) & 1;
+        aux_byte = aux_byte | bit << bit_index;
+
+        // Last bit
+        if i % 8 == 7 {
+            result.push(aux_byte);
+            aux_byte = 0;
+        }
+    }
+
+    result
+}
+
 pub fn registers_to_bytes(
     registers: Vec<ModbusDataType>,
     config: &ValueFormattingParams,
@@ -208,7 +234,7 @@ pub fn value_to_registers(
 
                 let value = apply_endianness(&value, config.byte_swap, config.word_swap, config.double_word_swap);
 
-                let value = apply_mask(value, config.starting_bit as usize, config.bit_length as usize);
+                let value = move_to_mask_position(value, config.starting_bit as usize, config.bit_length as usize);
 
                 result = build_registers_from_bytes(value)
             }

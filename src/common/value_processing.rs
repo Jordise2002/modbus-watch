@@ -128,7 +128,7 @@ fn move_to_mask_position(data: Vec<u8>, start_bit: usize, length: usize)  -> Vec
 
     let full_bytes_to_append = start_bit / 8;
 
-    for i in 0..full_bytes_to_append {
+    for _i in 0..full_bytes_to_append {
         result.push(0);
     }
 

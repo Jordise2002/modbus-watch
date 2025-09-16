@@ -1,5 +1,4 @@
 use std::net::IpAddr;
-use std::ops::Add;
 use std::sync::Arc;
 use std::{collections::HashMap, net::SocketAddr};
 use tweakable_modbus::{

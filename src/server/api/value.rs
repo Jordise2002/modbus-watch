@@ -4,7 +4,6 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use serde::{Deserialize, Serialize};
 
 use crate::{
     common::{model::Value, value_processing},
@@ -38,8 +37,7 @@ pub async fn get_value(
         &value_ref.formatting_params.data_type,
     );
 
-    if value.is_err()
-    {
+    if value.is_err() {
         return Err((StatusCode::INTERNAL_SERVER_ERROR, "Error formating value").into_response());
     }
 
@@ -48,21 +46,21 @@ pub async fn get_value(
     Ok(Json(value))
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy)]
-pub struct SetValueParams {
-    value: Value
-}
-
-pub async fn set_value(State(state): State<AppState>, Path(id): Path<String>, Json(value): Json<SetValueParams>) -> StatusCode {
+pub async fn set_value(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(value): Json<Value>,
+) -> StatusCode {
     let mut state = state.lock().await;
 
-    if ! state.contains_key(&id) {
+    if !state.contains_key(&id) {
         return StatusCode::NOT_FOUND;
     }
 
     let value_ref = state.get_mut(&id).unwrap();
 
-    let value_registers = value_processing::value_to_registers(value.value, &value_ref.formatting_params).unwrap();
+    let value_registers =
+        value_processing::value_to_registers(value, &value_ref.formatting_params).unwrap();
 
     value_ref.set_all_registers(value_registers);
 

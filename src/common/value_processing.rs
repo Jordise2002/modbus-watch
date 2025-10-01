@@ -133,16 +133,18 @@ fn move_to_mask_position(data: Vec<u8>, start_bit: usize, length: usize)  -> Vec
     }
 
     let mut aux_byte = 0;
-    let bit_index = start_bit % 8;
+    let mut bit_index = start_bit % 8;
 
     for i in 0..length {
         let bit = (data[i / 8] >> i % 8) & 1;
         aux_byte = aux_byte | bit << bit_index;
 
+        bit_index += 1;
         // Last bit
         if i % 8 == 7 {
             result.push(aux_byte);
             aux_byte = 0;
+            bit_index = 0;
         }
     }
 

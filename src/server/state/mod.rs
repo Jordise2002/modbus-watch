@@ -5,10 +5,10 @@ use tweakable_modbus::{ModbusAddress, ModbusDataType};
 
 use crate::{
     common::{
-        model::{Value, ValueFormattingParams},
+        model::Value,
         value_processing,
     },
-    server::model::ServedConnection,
+    server::model::{ServedConnection, ServedValue},
 };
 
 pub type AppState = Arc<Mutex<HashMap<String, ValueState>>>;
@@ -16,21 +16,21 @@ pub type AppState = Arc<Mutex<HashMap<String, ValueState>>>;
 pub struct ValueState {
     pub starting_address: ModbusAddress,
     registers: Vec<ModbusDataType>,
-    pub formatting_params: ValueFormattingParams,
+    pub config: ServedValue,
 }
 
 impl ValueState {
     pub fn new(
         starting_address: ModbusAddress,
         default_value: Value,
-        formatting_params: ValueFormattingParams,
+        config: ServedValue,
     ) -> Self {
-        let registers = value_processing::value_to_registers(default_value, &formatting_params).unwrap();
+        let registers = value_processing::value_to_registers(default_value, &config.formatting_params).unwrap();
 
         ValueState {
             starting_address,
             registers,
-            formatting_params,
+            config,
         }
     }
 
@@ -91,7 +91,7 @@ pub fn build_app_state(config: &Vec<ServedConnection>) -> AppState {
                     ValueState::new(
                         address,
                         value.default_value,
-                        value.formatting_params.clone(),
+                        value.clone(),
                     ),
                 );
             }

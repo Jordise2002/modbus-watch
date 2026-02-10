@@ -10,13 +10,6 @@ use crate::{
     server::state::AppState,
 };
 
-pub async fn list_values(State(state): State<AppState>) -> Json<Vec<String>> {
-    let state = state.lock().await;
-    let keys: Vec<String> = state.keys().cloned().collect();
-
-    Json(keys)
-}
-
 pub async fn get_value(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -32,9 +25,9 @@ pub async fn get_value(
     let value = value_processing::format_value(
         value_processing::registers_to_bytes(
             value_ref.get_all_registers(),
-            &value_ref.formatting_params,
+            &value_ref.config.formatting_params,
         ),
-        &value_ref.formatting_params.data_type,
+        &value_ref.config.formatting_params.data_type,
     );
 
     if value.is_err() {
@@ -60,7 +53,7 @@ pub async fn set_value(
     let value_ref = state.get_mut(&id).unwrap();
 
     let value_registers =
-        value_processing::value_to_registers(value, &value_ref.formatting_params).unwrap();
+        value_processing::value_to_registers(value, &value_ref.config.formatting_params).unwrap();
 
     value_ref.set_all_registers(value_registers);
 

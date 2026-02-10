@@ -14,7 +14,7 @@ fn default_ip() -> IpAddr {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PolledConnection {
-    #[serde(default, flatten)]
+    #[serde(default)]
     pub config: PolledConnectionConfig,
     #[serde(default = "default_ip")]
     pub ip: IpAddr,

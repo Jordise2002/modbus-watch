@@ -4,12 +4,16 @@ use axum::{routing::get, Router};
 
 use crate::server::state::AppState;
 
+mod common;
+mod config;
 mod value;
 
 pub async fn serve_api(app_state: AppState, port: u16) {
     let api_v1 = Router::new()
-        .route("/value", get(value::list_values))
+        .route("/value", get(common::list_values))
         .route("/value/{id}", get(value::get_value).post(value::set_value))
+        .route("/config", get(common::list_values))
+        .route("/config/{id}", get(config::get_config))
         .with_state(app_state.clone());
 
     let api = Router::new().nest("/api/v1", api_v1);

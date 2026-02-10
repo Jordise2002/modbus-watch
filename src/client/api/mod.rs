@@ -1,33 +1,33 @@
 use axum::{routing::get, Router};
-use r2d2_sqlite::SqliteConnectionManager;
 use r2d2::Pool;
+use r2d2_sqlite::SqliteConnectionManager;
 use std::net::SocketAddr;
 
 use crate::client::model::PolledConnection;
 use std::sync::Arc;
 
-mod config;
-mod value;
 mod common;
+mod config;
 mod history;
+mod value;
 
 pub struct ApiState {
     pub config: Vec<PolledConnection>,
-    pub db: Arc<Pool<SqliteConnectionManager>>
+    pub db: Arc<Pool<SqliteConnectionManager>>,
 }
 
-pub async fn serve_api(config: Vec<PolledConnection>, db: Arc<Pool<SqliteConnectionManager>>, port: u16) {
+pub async fn serve_api(
+    config: Vec<PolledConnection>,
+    db: Arc<Pool<SqliteConnectionManager>>,
+    port: u16,
+) {
     let state = Arc::new(ApiState { config, db });
-    let api_v1 = Router::new()
-        .route("/config/{id}", get(config::get_config))
-        .route("/config", get(common::list_values))
-        .route("/value/{id}", get(value::get_value))
-        .route("/value", get(common::list_values))
-        .route("/history/{id}", get(history::get_history))
-        .route("/history", get(common::list_values))
+    let api = Router::new()
+        .route("/values", get(common::list_values))
+        .route("/values/{id}", get(value::get_value))
+        .route("/values/{id}/config", get(config::get_config))
+        .route("/values/{id}/history", get(history::get_history))
         .with_state(state);
-
-    let api = Router::new().nest("/api/v1", api_v1);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
 
@@ -37,4 +37,3 @@ pub async fn serve_api(config: Vec<PolledConnection>, db: Arc<Pool<SqliteConnect
         axum::serve(listener, api).await.unwrap();
     });
 }
-

@@ -1,9 +1,9 @@
+use anyhow::{anyhow, Result};
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use anyhow::{anyhow, Result};
 
 use crate::client::data;
 use crate::client::data::read::get_polls_between;
@@ -28,7 +28,7 @@ impl Period {
             1 => Ok(Self::Minute),
             2 => Ok(Self::Hour),
             3 => Ok(Self::Day),
-            _ => Err(anyhow!("Value not supported for period!"))
+            _ => Err(anyhow!("Value not supported for period!")),
         }
     }
 }
@@ -38,7 +38,7 @@ pub struct AggregationInfo {
     pub value_id: String,
     pub period: Period,
     pub start_time: std::time::SystemTime,
-    pub finish_time: std::time::SystemTime,
+    pub end_time: std::time::SystemTime,
     #[serde(flatten)]
     pub aggregation: Aggregation,
 }
@@ -92,7 +92,9 @@ fn delete_excess_aggregates(
     conn: r2d2::PooledConnection<SqliteConnectionManager>,
 ) {
     if let Some(max_polls) = info.max_polls {
-        if let Err(err) = crate::client::data::write::delete_exceeding_polls(&conn, id.clone(), max_polls) {
+        if let Err(err) =
+            crate::client::data::write::delete_exceeding_polls(&conn, id.clone(), max_polls)
+        {
             tracing::error!("Error deleting exceeding polls: {}", err);
         }
     }
@@ -191,7 +193,7 @@ fn create_single_aggregate(
     let aggregate_info = AggregationInfo {
         value_id: id.clone(),
         start_time,
-        finish_time,
+        end_time: finish_time,
         period,
         aggregation: aggregate,
     };

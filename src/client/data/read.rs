@@ -130,7 +130,7 @@ pub fn get_aggregates_between(
             value_id,
             period,
             start_time,
-            finish_time,
+            end_time: finish_time,
             aggregation
         };
 

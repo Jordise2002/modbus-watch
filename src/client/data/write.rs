@@ -60,7 +60,7 @@ pub fn insert_modbus_aggregate(
         .duration_since(UNIX_EPOCH)?
         .as_secs();
     let finish = aggregate_info
-        .finish_time
+        .end_time
         .duration_since(UNIX_EPOCH)?
         .as_secs();
 

@@ -1,0 +1,61 @@
+components:
+  schemas:
+    Value:
+      oneOf:
+        - type: object
+          properties:
+            Integer:
+              type: number
+          required:
+            - Integer
+        - type: object
+          properties:
+            FloatingPoint:
+              type: number
+          required:
+            - FloatingPoint
+        - type: object
+          properties:
+            Boolean:
+              type: boolean
+          required:
+            - Boolean
+    ModbusTable:
+      type: string
+      enum:
+        - DiscreteInputs
+        - Coils
+        - InputRegisters
+        - HoldingRegisters
+    DataType:
+      type: string
+      enum:
+        - Boolean
+        - Byte
+        - UnsignedInteger16
+        - SignedInteger16
+        - UnsignedInteger32
+        - SignedInteger32
+        - SignedInteger64
+        - UnsignedInteger64
+        - Float
+        - Double
+    FormattingParameters:
+      type: object
+      properties:
+        starting_bit:
+          type: number
+        bit_length:
+          type: number
+        data_type:
+          $ref: "#/components/schemas/DataType"
+        byte_swap:
+          type: boolean
+        word_swap:
+          type: boolean
+        double_word_swap:
+          type: boolean
+      required:
+        - bit_length
+        - data_type
+        

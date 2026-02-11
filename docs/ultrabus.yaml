@@ -1,0 +1,174 @@
+openapi: 3.0.3
+info:
+  title: Ultrabus API
+  version: 1.0.0
+  description: Ultrabus is a FOSS solution for exposing Modbus devices through an easy-to-use RESTful API
+servers:
+  - url: http://localhost:8000
+    description: Local server
+paths:
+  /values:
+    get:
+      operationId: listValues
+      description: Enumerates the value defined in the configuration
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+  /values/{id}:
+    get:
+      operationId: getValue
+      description: Returns the last received poll for a given value
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Poll"
+        "404":
+          description: Not found
+  /values/{id}/history:
+    get:
+      operationId: getHistory
+      description: Returns the historic polls of a given value
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: start_date
+          in: query
+          required: false
+          schema:
+            type: number
+        - name: end_date
+          in: query
+          required: false
+          schema:
+            type: number
+        - name: max_group
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/Period"
+        - name: min_group
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/Period"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  oneOf:
+                    - $ref: "#/components/schemas/Poll"
+                    - $ref: "#/components/schemas/Aggregation"
+        "404":
+          description: Not found
+  /values/{id}/config:
+    get:
+      operationId: getConfig
+      description: returns the config of a given value
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Config"
+        "404":
+          description: Not found
+components:
+  schemas:
+    Aggregation:
+      type: object
+      properties:
+        value_id:
+          type: string
+        period:
+          $ref: "#/components/schemas/Period"
+        start_time:
+          type: number
+        end_time:
+          type: number
+        average:
+          $ref: "./common.yaml#/components/schemas/Value"
+        median:
+          $ref: "./common.yaml#/components/schemas/Value"
+        moda:
+          $ref: "./common.yaml#/components/schemas/Value"
+        min:
+          $ref: "./common.yaml#/components/schemas/Value"
+        max:
+          $ref: "./common.yaml#/components/schemas/Value"
+        amount:
+          type: number
+    Poll:
+      type: object
+      properties:
+        value_id:
+          type: string
+        value:
+          $ref: "./common.yaml#/components/schemas/Value"
+        secs_since_epoch:
+          type: number
+      required:
+        - value_id
+        - value
+        - secs_since_epoch
+    Config:
+      type: object
+      properties:
+        id:
+          type: string
+        starting_address:
+          type: number
+        poll_time:
+          type: string
+        table:
+          $ref: "./common.yaml#/components/schemas/ModbusTable"
+        max_polls_to_keep:
+          type: number
+        max_minute_aggregations_to_keep:
+          type: number
+        max_hour_aggregations_to_keep:
+          type: number
+        max_day_aggregations_to_keep:
+          type: number
+      allOf:
+        - $ref: "./common.yaml#/components/schemas/FormattingParameters"
+      required:
+        - id
+        - starting_address
+        - table
+        - poll_time
+    Period:
+      type: string
+      enum:
+        - NoGrouping
+        - Minute
+        - Hour
+        - Day

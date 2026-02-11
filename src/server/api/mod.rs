@@ -10,10 +10,9 @@ mod value;
 
 pub async fn serve_api(app_state: AppState, port: u16) {
     let api_v1 = Router::new()
-        .route("/value", get(common::list_values))
-        .route("/value/{id}", get(value::get_value).post(value::set_value))
-        .route("/config", get(common::list_values))
-        .route("/config/{id}", get(config::get_config))
+        .route("/values", get(common::list_values))
+        .route("/values/{id}", get(value::get_value).put(value::set_value))
+        .route("/values/{id}/config", get(config::get_config))
         .with_state(app_state.clone());
 
     let api = Router::new().nest("/api/v1", api_v1);

@@ -43,11 +43,11 @@ pub async fn set_value(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(value): Json<Value>,
-) -> StatusCode {
+) -> Result<Json<Value>, Response> {
     let mut state = state.lock().await;
 
     if !state.contains_key(&id) {
-        return StatusCode::NOT_FOUND;
+        return Err((StatusCode::NOT_FOUND, "Not found").into_response());
     }
 
     let value_ref = state.get_mut(&id).unwrap();
@@ -57,5 +57,5 @@ pub async fn set_value(
 
     value_ref.set_all_registers(value_registers);
 
-    StatusCode::NO_CONTENT
+    Ok(Json(value))
 }

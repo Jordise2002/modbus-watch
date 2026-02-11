@@ -1,0 +1,68 @@
+openapi: 3.0.3
+info:
+  title: Ultraslave API
+  version: 1.0.0
+  description:
+servers:
+  - url: http://localhost:8080
+    description: Local Server
+paths:
+  /values:
+    get:
+      operationId: listValues
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: 
+                  type: string
+  /values/{id}: 
+    get:
+      operationId: getValue
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "./common.yaml#/components/schemas/Value"
+        '404':
+          description: Not found
+    put:
+      operationId: setValue
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "./common.yaml#/components/schemas/Value"
+        '404':
+          description: Not found
+  /values/{id}/config:
+    operationId: getConfig
+    responses:
+      '200':
+        description: OK
+        content:
+          application/json:
+            schema:
+              $ref: 
+components:
+  schemas:
+    Config:
+      type: object
+      properties:
+        id:
+          type: string
+        starting_address:
+          type: number
+        table:
+          $ref: "./common.yaml#/components/schemas/ModbusTable"
+        default_value:
+          $ref: "./common.yaml#/components/schemas/Value"
+      allOf:
+        - "./common.yaml#/components/schemas/FormattingParameters"

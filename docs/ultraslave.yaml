@@ -67,4 +67,4 @@ components:
         default_value:
           $ref: "./common.yaml#/components/schemas/Value"
       allOf:
-        - "./common.yaml#/components/schemas/FormattingParameters"
+        - $ref: "./common.yaml#/components/schemas/FormattingParameters"

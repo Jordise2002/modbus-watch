@@ -50,7 +50,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: 
+              $ref: "#/components/schemas/Config"
+      '404':
+        description: Not found
 components:
   schemas:
     Config:

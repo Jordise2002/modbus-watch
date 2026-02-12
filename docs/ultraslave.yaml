@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Ultraslave API
   version: 1.0.0
-  description:
+  description: Ultraslave is a FOSS Modbus slave simulator designed to be operated through a RESTful API 
 servers:
   - url: http://localhost:8080
     description: Local Server

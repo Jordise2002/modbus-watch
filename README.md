@@ -29,7 +29,7 @@ We are still working on the configuration description docs!
 
 To find out about the Ultrabus API check the docs [here](https://jordise2002.github.io/Ultrabus/ultrabus.html)
 
-To learn more about the Ultraslave API check the docs [here](https://jordise2002.github.io/Ultrabus/ultrabus.html)
+To learn more about the Ultraslave API check the docs [here](https://jordise2002.github.io/Ultrabus/ultraslave.html)
 
 ## Installation
 
